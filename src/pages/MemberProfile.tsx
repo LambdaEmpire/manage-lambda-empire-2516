@@ -11,6 +11,7 @@ import { Label } from '../components/ui/label';
 import { useToast } from '../hooks/use-toast';
 import MemberAccomplishments from '../components/MemberAccomplishments';
 import { User, Mail, Phone, MapPin, Calendar, Edit, Save, X } from 'lucide-react';
+import { Switch } from '../components/ui/switch'; // Import Switch component
 
 interface UserProfile {
   id: string;
@@ -20,11 +21,18 @@ interface UserProfile {
   phone?: string;
   bio?: string;
   location?: string;
-  city?: string; // New field
-  state?: string; // New field
+  city?: string;
+  state?: string;
   joined_date?: string;
   avatar_url?: string;
-  can_approve_members?: boolean; // New field
+  can_approve_members?: boolean;
+  visibility_settings?: { // New field for visibility
+    phone?: boolean;
+    location?: boolean;
+    bio?: boolean;
+    city?: boolean;
+    state?: boolean;
+  };
 }
 
 const MemberProfile = () => {
@@ -83,11 +91,18 @@ const MemberProfile = () => {
         phone: profileData?.phone || userData.user.user_metadata?.phone || '',
         bio: profileData?.bio || '',
         location: profileData?.location || '',
-        city: profileData?.city || '', // New field
-        state: profileData?.state || '', // New field
+        city: profileData?.city || '',
+        state: profileData?.state || '',
         joined_date: userData.user.created_at,
         avatar_url: profileData?.avatar_url || userData.user.user_metadata?.avatar_url || '',
-        can_approve_members: profileData?.can_approve_members || false // New field
+        can_approve_members: profileData?.can_approve_members || false,
+        visibility_settings: profileData?.visibility_settings || { // Default visibility settings
+          phone: true,
+          location: true,
+          bio: true,
+          city: true,
+          state: true,
+        }
       };
 
       setProfile(combinedProfile);
@@ -118,10 +133,11 @@ const MemberProfile = () => {
           phone: editForm.phone,
           bio: editForm.bio,
           location: editForm.location,
-          city: editForm.city, // New field
-          state: editForm.state, // New field
+          city: editForm.city,
+          state: editForm.state,
           avatar_url: editForm.avatar_url,
-          can_approve_members: editForm.can_approve_members // New field
+          can_approve_members: editForm.can_approve_members,
+          visibility_settings: editForm.visibility_settings // Save visibility settings
         });
 
       if (error) {
@@ -142,6 +158,16 @@ const MemberProfile = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const handleVisibilityChange = (field: keyof UserProfile['visibility_settings'], checked: boolean) => {
+    setEditForm(prev => ({
+      ...prev,
+      visibility_settings: {
+        ...prev.visibility_settings,
+        [field]: checked
+      }
+    }));
   };
 
   const isOwnProfile = currentUser?.id === memberId;
@@ -329,6 +355,51 @@ const MemberProfile = () => {
                       rows={4}
                       placeholder="Tell us about yourself..."
                     />
+                  </div>
+                  {/* Visibility Settings */}
+                  <div className="space-y-2 border-t pt-4 mt-4">
+                    <h4 className="font-semibold text-md">Visibility Settings (for other members)</h4>
+                    <p className="text-sm text-gray-600 mb-2">Control what information is visible to other members in the directory. Admins can always view all information.</p>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="visibility-phone">Show Phone Number</Label>
+                      <Switch
+                        id="visibility-phone"
+                        checked={editForm.visibility_settings?.phone ?? true}
+                        onCheckedChange={(checked) => handleVisibilityChange('phone', checked)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="visibility-location">Show Location (General)</Label>
+                      <Switch
+                        id="visibility-location"
+                        checked={editForm.visibility_settings?.location ?? true}
+                        onCheckedChange={(checked) => handleVisibilityChange('location', checked)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="visibility-city">Show City</Label>
+                      <Switch
+                        id="visibility-city"
+                        checked={editForm.visibility_settings?.city ?? true}
+                        onCheckedChange={(checked) => handleVisibilityChange('city', checked)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="visibility-state">Show State</Label>
+                      <Switch
+                        id="visibility-state"
+                        checked={editForm.visibility_settings?.state ?? true}
+                        onCheckedChange={(checked) => handleVisibilityChange('state', checked)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="visibility-bio">Show Bio</Label>
+                      <Switch
+                        id="visibility-bio"
+                        checked={editForm.visibility_settings?.bio ?? true}
+                        onCheckedChange={(checked) => handleVisibilityChange('bio', checked)}
+                      />
+                    </div>
                   </div>
                 </div>
               ) : (
