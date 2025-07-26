@@ -109,6 +109,31 @@ const paymentHistory = [
   }
 ];
 
+// Mock data for dues periods and member dues (same as QuarterlyDuesManagement for consistency)
+const duesPeriods = [
+  { id: 'Q1_2024', name: 'Q1 2024', startDate: '2024-01-01', endDate: '2024-03-31', status: 'active', defaultAmount: 50 },
+  { id: 'Q2_2024', name: 'Q2 2024', startDate: '2024-04-01', endDate: '2024-06-30', status: 'active', defaultAmount: 50 },
+  { id: 'Q3_2024', name: 'Q3 2024', startDate: '2024-07-01', endDate: '2024-09-30', status: 'active', defaultAmount: 50 },
+  { id: 'Q4_2024', name: 'Q4 2024', startDate: '2024-10-01', endDate: '2024-12-31', status: 'active', defaultAmount: 50 },
+];
+
+const memberDuesData = [
+  {
+    memberId: 'LEM001234',
+    memberName: 'John Doe',
+    chapter: 'Alpha Chapter',
+    dues: [
+      { periodId: 'Q1_2024', amountDue: 50, amountPaid: 50, status: 'paid', dueDate: '2024-03-31' },
+      { periodId: 'Q2_2024', amountDue: 50, amountPaid: 0, status: 'outstanding', dueDate: '2024-06-30' },
+      { periodId: 'Q3_2024', amountDue: 50, amountPaid: 0, status: 'outstanding', dueDate: '2024-09-30' },
+      { periodId: 'Q4_2024', amountDue: 50, amountPaid: 0, status: 'outstanding', dueDate: '2024-12-31' },
+    ]
+  },
+];
+
+// Mock current member (this would come from auth context in a real app)
+const currentMemberId = 'LEM001234'; 
+
 export default function SquarePaymentSystem() {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [customAmount, setCustomAmount] = useState('');
@@ -116,6 +141,7 @@ export default function SquarePaymentSystem() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentError, setPaymentError] = useState('');
+  const [selectedDuesPeriod, setSelectedDuesPeriod] = useState('');
 
   // Mock member data
   const currentMember = {
@@ -123,7 +149,7 @@ export default function SquarePaymentSystem() {
     name: 'John Doe',
     email: 'john.doe@email.com',
     chapter: 'Alpha Chapter',
-    outstandingBalance: 225.00
+    outstandingBalance: 225.00 // This would be dynamically calculated
   };
 
   const getStatusColor = (status) => {
@@ -150,6 +176,27 @@ export default function SquarePaymentSystem() {
     setCustomAmount(paymentOption.amount > 0 ? paymentOption.amount.toString() : '');
     setIsPaymentDialogOpen(true);
     setPaymentError('');
+    setSelectedDuesPeriod(''); // Reset selected dues period
+  };
+
+  const initiateDuesPayment = (periodId) => {
+    const duesEntry = memberDuesData.find(m => m.memberId === currentMemberId)?.dues.find(d => d.periodId === periodId);
+    if (duesEntry) {
+      setSelectedPayment({
+        id: duesEntry.periodId,
+        name: `${duesPeriods.find(p => p.id === duesEntry.periodId)?.name} Dues`,
+        description: `Quarterly dues for ${duesPeriods.find(p => p.id === duesEntry.periodId)?.name}`,
+        amount: duesEntry.amountDue,
+        frequency: 'Quarterly',
+        dueDate: duesEntry.dueDate,
+        category: 'dues',
+        required: true
+      });
+      setCustomAmount(duesEntry.amountDue.toString());
+      setIsPaymentDialogOpen(true);
+      setPaymentError('');
+      setSelectedDuesPeriod(periodId);
+    }
   };
 
   const processSquarePayment = async () => {
@@ -198,6 +245,7 @@ export default function SquarePaymentSystem() {
         setPaymentSuccess(false);
         setSelectedPayment(null);
         setCustomAmount('');
+        setSelectedDuesPeriod('');
       }, 3000);
 
     } catch (error) {
@@ -213,6 +261,15 @@ export default function SquarePaymentSystem() {
     const invoiceUrl = `https://squareup.com/invoice/lambda-empire/${paymentOption.id}`;
     window.open(invoiceUrl, '_blank');
   };
+
+  const availableDuesPeriods = memberDuesData.find(m => m.memberId === currentMemberId)?.dues
+    .filter(d => d.status === 'outstanding' || d.status === 'overdue' || new Date(d.dueDate) > new Date())
+    .map(d => ({
+      id: d.periodId,
+      name: duesPeriods.find(p => p.id === d.periodId)?.name,
+      amount: d.amountDue,
+      dueDate: d.dueDate
+    }));
 
   return (
     <div className="space-y-6">
@@ -245,70 +302,133 @@ export default function SquarePaymentSystem() {
         </AlertDescription>
       </Alert>
 
+      {/* Non-refundable notice */}
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription className="font-semibold">
+          All payments made are non-refundable. Please ensure your selection is correct before proceeding.
+        </AlertDescription>
+      </Alert>
+
       {/* Payment Options */}
       <Card>
         <CardHeader>
-          <CardTitle>Available Payments</CardTitle>
+          <CardTitle>Pay Quarterly Dues Early</CardTitle>
           <CardDescription>
-            Select a payment option to proceed with Square checkout
+            Select a future quarterly dues period to pay in advance.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {paymentOptions.map((option) => (
-              <div key={option.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      {getCategoryIcon(option.category)}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{option.name}</h3>
-                      <p className="text-sm text-gray-600">{option.description}</p>
+          {availableDuesPeriods && availableDuesPeriods.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {availableDuesPeriods.map((period) => (
+                <div key={period.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Building className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">{period.name} Dues</h3>
+                        <p className="text-sm text-gray-600">Due: {new Date(period.dueDate).toLocaleDateString()}</p>
+                      </div>
                     </div>
                   </div>
-                  {option.required && (
-                    <Badge className="bg-red-100 text-red-800">Required</Badge>
-                  )}
-                </div>
-                
-                <div className="space-y-2 mb-4">
-                  {option.amount > 0 && (
+                  
+                  <div className="space-y-2 mb-4">
                     <p className="text-lg font-bold text-green-600">
-                      ${option.amount.toFixed(2)}
+                      ${period.amount.toFixed(2)}
                     </p>
-                  )}
-                  <p className="text-sm text-gray-500">
-                    <strong>Frequency:</strong> {option.frequency}
-                  </p>
-                  {option.dueDate && (
-                    <p className="text-sm text-gray-500">
-                      <strong>Due Date:</strong> {new Date(option.dueDate).toLocaleDateString()}
-                    </p>
-                  )}
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => initiateDuesPayment(period.id)}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Pay Now
+                    </Button>
+                  </div>
                 </div>
-                
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => initiatePayment(option)}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700"
-                  >
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Pay with Square
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => openSquareInvoice(option)}
-                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-800">No future dues available for early payment.</h3>
+              <p className="text-gray-600 mt-2">You are all caught up or no future periods are open for early payment.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Other Payment Options (if any) */}
+      {paymentOptions.filter(opt => opt.category !== 'dues').length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Other Payment Options</CardTitle>
+            <CardDescription>
+              Select other payment options like event fees or merchandise.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {paymentOptions.filter(opt => opt.category !== 'dues').map((option) => (
+                <div key={option.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        {getCategoryIcon(option.category)}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">{option.name}</h3>
+                        <p className="text-sm text-gray-600">{option.description}</p>
+                      </div>
+                    </div>
+                    {option.required && (
+                      <Badge className="bg-red-100 text-red-800">Required</Badge>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2 mb-4">
+                    {option.amount > 0 && (
+                      <p className="text-lg font-bold text-green-600">
+                        ${option.amount.toFixed(2)}
+                      </p>
+                    )}
+                    <p className="text-sm text-gray-500">
+                      <strong>Frequency:</strong> {option.frequency}
+                    </p>
+                    {option.dueDate && (
+                      <p className="text-sm text-gray-500">
+                        <strong>Due Date:</strong> {new Date(option.dueDate).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => initiatePayment(option)}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Pay with Square
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => openSquareInvoice(option)}
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Payment History */}
       <Card>
