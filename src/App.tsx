@@ -20,6 +20,8 @@ import Recruitment from '@/pages/Recruitment';
 import MemberProfile from '@/pages/MemberProfile';
 import AccomplishmentsManagement from '@/pages/AccomplishmentsManagement';
 import StatusManagement from '@/pages/StatusManagement';
+import PaymentCenter from '@/pages/PaymentCenter';
+import AdminPaymentManagementPage from '@/pages/AdminPaymentManagement';
 import './App.css';
 
 function App() {
@@ -46,6 +48,8 @@ function App() {
           <Route path="admin/inbox-monitor" element={<AdminInboxMonitor />} />
           <Route path="admin/accomplishments" element={<AccomplishmentsManagement />} />
           <Route path="admin/status-management" element={<StatusManagement />} />
+          <Route path="admin/payments" element={<AdminPaymentManagementPage />} />
+          <Route path="payments" element={<PaymentCenter />} />
           <Route path="inbox" element={<MemberInbox />} />
           <Route path="empire-house" element={<EmpireHouse />} />
           <Route path="events" element={<Events />} />
