@@ -11,6 +11,8 @@ import {
   Settings,
   Shield,
   User,
+  Mail,
+  Eye
 } from 'lucide-react';
 import {
   Sidebar,
@@ -31,6 +33,11 @@ const memberItems = [
     title: 'Dashboard',
     url: '/',
     icon: Home,
+  },
+  {
+    title: 'Inbox',
+    url: '/inbox',
+    icon: Mail,
   },
   {
     title: 'My Profile',
@@ -69,6 +76,11 @@ const adminItems = [
     title: 'Member Management',
     url: '/admin/members',
     icon: Users,
+  },
+  {
+    title: 'Inbox Monitor',
+    url: '/admin/inbox-monitor',
+    icon: Eye,
   },
   {
     title: 'Fundraising',
