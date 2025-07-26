@@ -19,6 +19,7 @@ import Communications from '@/pages/Communications';
 import Recruitment from '@/pages/Recruitment';
 import MemberProfile from '@/pages/MemberProfile';
 import AccomplishmentsManagement from '@/pages/AccomplishmentsManagement';
+import StatusManagement from '@/pages/StatusManagement';
 import './App.css';
 
 function App() {
@@ -44,6 +45,7 @@ function App() {
           <Route path="admin/create-admin" element={<AdminCreation />} />
           <Route path="admin/inbox-monitor" element={<AdminInboxMonitor />} />
           <Route path="admin/accomplishments" element={<AccomplishmentsManagement />} />
+          <Route path="admin/status-management" element={<StatusManagement />} />
           <Route path="inbox" element={<MemberInbox />} />
           <Route path="empire-house" element={<EmpireHouse />} />
           <Route path="events" element={<Events />} />
