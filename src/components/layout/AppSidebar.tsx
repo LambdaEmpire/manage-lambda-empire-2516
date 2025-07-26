@@ -71,7 +71,7 @@ const memberItems = [
   {
     title: 'Dues',
     url: '/payments',
-    icon: CreditCard,
+    icon: ClipboardList,
   },
 ];
 
