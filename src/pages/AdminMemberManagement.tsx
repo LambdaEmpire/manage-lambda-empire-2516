@@ -26,7 +26,9 @@ import {
   CheckCircle,
   AlertTriangle,
   Clock,
-  Award
+  Award,
+  Star, // For Member Point System
+  ClipboardList // For Quarterly Dues
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -90,7 +92,10 @@ const permissionCategories = [
       { key: 'memberManagement', label: 'Member Management', icon: Users, description: 'Manage other members' },
       { key: 'adminTools', label: 'Admin Tools', icon: Shield, description: 'Advanced administrative functions' },
       { key: 'canApproveMembers', label: 'Can Approve Members', icon: CheckCircle, description: 'Can approve new member applications' },
-      { key: 'canApproveServiceHours', label: 'Can Approve Service Hours', icon: Award, description: 'Can approve or reject service hours submissions' }
+      { key: 'canApproveServiceHours', label: 'Can Approve Service Hours', icon: Award, description: 'Can approve or reject service hours submissions' },
+      { key: 'canManagePoints', label: 'Can Manage Member Points', icon: Star, description: 'Can log and manage member activity points' },
+      { key: 'canManageDues', label: 'Can Manage Quarterly Dues', icon: ClipboardList, description: 'Can manage dues periods and member payments' },
+      { key: 'canManageStatus', label: 'Can Manage Member Status', icon: Settings, description: 'Can manage automated status monitoring and logs' }
     ]
   },
   {
@@ -130,6 +135,7 @@ const members = [
     permissions: {
       dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
       recruitment: true, communications: true, memberManagement: false, adminTools: false, canApproveMembers: false, canApproveServiceHours: true,
+      canManagePoints: false, canManageDues: false, canManageStatus: false,
       financialReports: false, nationalDues: false, fundraising: true, treasuryAccess: false
     },
     labels: ['Leadership Team', 'Volunteer Coordinator']
@@ -159,6 +165,7 @@ const members = [
     permissions: {
       dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
       recruitment: true, communications: true, memberManagement: true, adminTools: false, canApproveMembers: true, canApproveServiceHours: true,
+      canManagePoints: true, canManageDues: true, canManageStatus: true,
       financialReports: true, nationalDues: false, fundraising: true, treasuryAccess: false
     },
     labels: ['Regional Coordinator', 'Mentor']
@@ -188,6 +195,7 @@ const members = [
     permissions: {
       dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
       recruitment: true, communications: true, memberManagement: true, adminTools: true, canApproveMembers: true, canApproveServiceHours: true,
+      canManagePoints: true, canManageDues: true, canManageStatus: true,
       financialReports: true, nationalDues: true, fundraising: true, treasuryAccess: true
     },
     labels: ['Executive Board', 'Financial Officer']
@@ -217,6 +225,7 @@ const members = [
     permissions: {
       dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
       recruitment: true, communications: true, memberManagement: true, adminTools: true, canApproveMembers: true, canApproveServiceHours: true,
+      canManagePoints: true, canManageDues: true, canManageStatus: true,
       financialReports: true, nationalDues: true, fundraising: true, treasuryAccess: true
     },
     labels: ['National Leadership', 'Sorority Liaison']
