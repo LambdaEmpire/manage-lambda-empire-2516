@@ -44,6 +44,12 @@ create table if not exists public.user_roles (
 
 alter table public.user_roles enable row level security;
 
+-- Add city, state, and can_approve_members to profiles table
+alter table public.profiles
+add column if not exists city text,
+add column if not exists state text,
+add column if not exists can_approve_members boolean default false;
+
 -- Create security definer function to check roles
 create or replace function public.has_role(_user_id uuid, _role app_role)
 returns boolean

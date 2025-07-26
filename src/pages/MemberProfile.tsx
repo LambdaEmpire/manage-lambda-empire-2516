@@ -20,8 +20,11 @@ interface UserProfile {
   phone?: string;
   bio?: string;
   location?: string;
+  city?: string; // New field
+  state?: string; // New field
   joined_date?: string;
   avatar_url?: string;
+  can_approve_members?: boolean; // New field
 }
 
 const MemberProfile = () => {
@@ -80,8 +83,11 @@ const MemberProfile = () => {
         phone: profileData?.phone || userData.user.user_metadata?.phone || '',
         bio: profileData?.bio || '',
         location: profileData?.location || '',
+        city: profileData?.city || '', // New field
+        state: profileData?.state || '', // New field
         joined_date: userData.user.created_at,
-        avatar_url: profileData?.avatar_url || userData.user.user_metadata?.avatar_url || ''
+        avatar_url: profileData?.avatar_url || userData.user.user_metadata?.avatar_url || '',
+        can_approve_members: profileData?.can_approve_members || false // New field
       };
 
       setProfile(combinedProfile);
@@ -112,7 +118,10 @@ const MemberProfile = () => {
           phone: editForm.phone,
           bio: editForm.bio,
           location: editForm.location,
-          avatar_url: editForm.avatar_url
+          city: editForm.city, // New field
+          state: editForm.state, // New field
+          avatar_url: editForm.avatar_url,
+          can_approve_members: editForm.can_approve_members // New field
         });
 
       if (error) {
@@ -200,10 +209,14 @@ const MemberProfile = () => {
                     <span>{profile.phone}</span>
                   </div>
                 )}
-                {profile.location && (
+                {(profile.location || profile.city || profile.state) && (
                   <div className="flex items-center space-x-2 text-gray-600">
                     <MapPin className="w-4 h-4" />
-                    <span>{profile.location}</span>
+                    <span>
+                      {profile.location}
+                      {profile.location && (profile.city || profile.state) && ', '}
+                      {profile.city}{profile.city && profile.state && ', '}{profile.state}
+                    </span>
                   </div>
                 )}
                 <div className="flex items-center space-x-2 text-gray-600">
@@ -288,6 +301,24 @@ const MemberProfile = () => {
                       value={editForm.location || ''}
                       onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
                     />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="city">City</Label>
+                      <Input
+                        id="city"
+                        value={editForm.city || ''}
+                        onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="state">State</Label>
+                      <Input
+                        id="state"
+                        value={editForm.state || ''}
+                        onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
+                      />
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="bio">Bio</Label>

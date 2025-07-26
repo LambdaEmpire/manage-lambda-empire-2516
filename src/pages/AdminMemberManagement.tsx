@@ -86,7 +86,8 @@ const permissionCategories = [
       { key: 'recruitment', label: 'Recruitment Center', icon: UserPlus, description: 'Manage applications and pledges' },
       { key: 'communications', label: 'Communications', icon: MessageSquare, description: 'Send messages and announcements' },
       { key: 'memberManagement', label: 'Member Management', icon: Users, description: 'Manage other members' },
-      { key: 'adminTools', label: 'Admin Tools', icon: Shield, description: 'Advanced administrative functions' }
+      { key: 'adminTools', label: 'Admin Tools', icon: Shield, description: 'Advanced administrative functions' },
+      { key: 'canApproveMembers', label: 'Can Approve Members', icon: CheckCircle, description: 'Can approve new member applications' } // New permission
     ]
   },
   {
@@ -114,24 +115,13 @@ const members = [
     joinDate: '2020-03-15',
     status: 'Active',
     approvalStatus: 'approved',
-    genderAffiliation: 'Fraternity', // New field
+    genderAffiliation: 'Fraternity',
+    city: 'New York', // New field
+    state: 'NY', // New field
     permissions: {
-      // Core Access
-      dashboard: true,
-      profile: true,
-      events: true,
-      serviceHours: true,
-      lambdaKnowledge: true,
-      // Administrative
-      recruitment: true,
-      communications: true,
-      memberManagement: false,
-      adminTools: false,
-      // Financial
-      financialReports: false,
-      nationalDues: false,
-      fundraising: true,
-      treasuryAccess: false
+      dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
+      recruitment: true, communications: true, memberManagement: false, adminTools: false, canApproveMembers: false, // New permission
+      financialReports: false, nationalDues: false, fundraising: true, treasuryAccess: false
     },
     labels: ['Leadership Team', 'Volunteer Coordinator']
   },
@@ -148,24 +138,13 @@ const members = [
     joinDate: '2019-08-22',
     status: 'Active',
     approvalStatus: 'pending',
-    genderAffiliation: 'Sorority', // New field
+    genderAffiliation: 'Sorority',
+    city: 'Atlanta', // New field
+    state: 'GA', // New field
     permissions: {
-      // Core Access
-      dashboard: true,
-      profile: true,
-      events: true,
-      serviceHours: true,
-      lambdaKnowledge: true,
-      // Administrative
-      recruitment: true,
-      communications: true,
-      memberManagement: true,
-      adminTools: false,
-      // Financial
-      financialReports: true,
-      nationalDues: false,
-      fundraising: true,
-      treasuryAccess: false
+      dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
+      recruitment: true, communications: true, memberManagement: true, adminTools: false, canApproveMembers: true, // New permission
+      financialReports: true, nationalDues: false, fundraising: true, treasuryAccess: false
     },
     labels: ['Regional Coordinator', 'Mentor']
   },
@@ -182,24 +161,13 @@ const members = [
     joinDate: '2018-01-10',
     status: 'Active',
     approvalStatus: 'approved',
-    genderAffiliation: 'Fraternity', // New field
+    genderAffiliation: 'Fraternity',
+    city: 'Chicago', // New field
+    state: 'IL', // New field
     permissions: {
-      // Core Access
-      dashboard: true,
-      profile: true,
-      events: true,
-      serviceHours: true,
-      lambdaKnowledge: true,
-      // Administrative
-      recruitment: true,
-      communications: true,
-      memberManagement: true,
-      adminTools: true,
-      // Financial
-      financialReports: true,
-      nationalDues: true,
-      fundraising: true,
-      treasuryAccess: true
+      dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
+      recruitment: true, communications: true, memberManagement: true, adminTools: true, canApproveMembers: true, // New permission
+      financialReports: true, nationalDues: true, fundraising: true, treasuryAccess: true
     },
     labels: ['Executive Board', 'Financial Officer']
   },
@@ -216,10 +184,12 @@ const members = [
     joinDate: '2021-05-01',
     status: 'Active',
     approvalStatus: 'approved',
-    genderAffiliation: 'Sorority', // New field
+    genderAffiliation: 'Sorority',
+    city: 'Los Angeles', // New field
+    state: 'CA', // New field
     permissions: {
       dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
-      recruitment: true, communications: true, memberManagement: true, adminTools: true,
+      recruitment: true, communications: true, memberManagement: true, adminTools: true, canApproveMembers: true, // New permission
       financialReports: true, nationalDues: true, fundraising: true, treasuryAccess: true
     },
     labels: ['National Leadership', 'Sorority Liaison']
@@ -231,10 +201,10 @@ export default function AdminMemberManagement() {
   const [selectedLevel, setSelectedLevel] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedApprovalStatus, setSelectedApprovalStatus] = useState('all');
-  const [selectedGenderAffiliation, setSelectedGenderAffiliation] = useState('all'); // New state for gender affiliation filter
+  const [selectedGenderAffiliation, setSelectedGenderAffiliation] = useState('all');
   const [selectedMember, setSelectedMember] = useState(null);
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
-  const [restrictMemberView, setRestrictMemberView] = useState(false); // State for the toggle
+  const [restrictMemberView, setRestrictMemberView] = useState(false);
 
   const filteredMembers = members.filter(member => {
     const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -243,7 +213,7 @@ export default function AdminMemberManagement() {
     const matchesLevel = selectedLevel === 'all' || member.level.toLowerCase() === selectedLevel;
     const matchesStatus = selectedStatus === 'all' || member.status.toLowerCase() === selectedStatus;
     const matchesApproval = selectedApprovalStatus === 'all' || member.approvalStatus === selectedApprovalStatus;
-    const matchesGenderAffiliation = selectedGenderAffiliation === 'all' || member.genderAffiliation === selectedGenderAffiliation; // New filter logic
+    const matchesGenderAffiliation = selectedGenderAffiliation === 'all' || member.genderAffiliation === selectedGenderAffiliation;
     
     // Logic for restricted member view based on admin's level and gender affiliation
     if (restrictMemberView) {
@@ -494,7 +464,8 @@ export default function AdminMemberManagement() {
                     <div className="space-y-2">
                       <p><span className="font-medium">Chapter:</span> {member.chapter}</p>
                       <p><span className="font-medium">Region:</span> {member.region}</p>
-                      <p><span className="font-medium">Affiliation:</span> {member.genderAffiliation}</p> {/* Display affiliation */}
+                      <p><span className="font-medium">Affiliation:</span> {member.genderAffiliation}</p>
+                      <p><span className="font-medium">Location:</span> {member.city}, {member.state}</p> {/* Display city and state */}
                     </div>
                     <div className="space-y-2">
                       <p><span className="font-medium">Joined:</span> {new Date(member.joinDate).toLocaleDateString()}</p>
