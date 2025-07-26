@@ -209,6 +209,7 @@ export default function AdminMemberManagement() {
   const [selectedApprovalStatus, setSelectedApprovalStatus] = useState('all');
   const [selectedMember, setSelectedMember] = useState(null);
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
+  const [restrictMemberView, setRestrictMemberView] = useState(false); // New state for the toggle
 
   const filteredMembers = members.filter(member => {
     const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -218,6 +219,19 @@ export default function AdminMemberManagement() {
     const matchesStatus = selectedStatus === 'all' || member.status.toLowerCase() === selectedStatus;
     const matchesApproval = selectedApprovalStatus === 'all' || member.approvalStatus === selectedApprovalStatus;
     
+    // New logic for restricted member view
+    if (restrictMemberView) {
+      // Example: Only show members from the same chapter for chapter-level leaders
+      // This logic would be more complex in a real app, based on the logged-in admin's role
+      const loggedInAdmin = members[0]; // Assuming John Doe is the logged-in admin for this example
+      if (loggedInAdmin.level === 'Chapter' && member.chapter !== loggedInAdmin.chapter) {
+        return false;
+      }
+      if (loggedInAdmin.level === 'Regional' && member.region !== loggedInAdmin.region) {
+        return false;
+      }
+    }
+
     return matchesSearch && matchesLevel && matchesStatus && matchesApproval;
   });
 
@@ -312,6 +326,14 @@ export default function AdminMemberManagement() {
                 <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex items-center space-x-2 mt-4">
+            <Switch
+              id="restrict-member-view"
+              checked={restrictMemberView}
+              onCheckedChange={setRestrictMemberView}
+            />
+            <Label htmlFor="restrict-member-view">Restrict Member View (based on admin's level)</Label>
           </div>
         </CardContent>
       </Card>
