@@ -1,183 +1,355 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { User, Mail, Phone, MapPin, Calendar, Edit } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
+import { Label } from '../components/ui/label';
+import { useToast } from '../hooks/use-toast';
+import MemberAccomplishments from '../components/MemberAccomplishments';
+import { User, Mail, Phone, MapPin, Calendar, Edit, Save, X } from 'lucide-react';
 
-export default function MemberProfile() {
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="bg-gradient-to-r from-lambda-purple to-lambda-gold p-6 rounded-xl text-white">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16 border-4 border-white/20">
-              <AvatarFallback className="bg-white/20 text-white text-xl font-bold">
-                JD
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold">John Doe</h1>
-              <p className="text-white/90 mt-1">Member ID: LEM001234</p>
+interface UserProfile {
+  id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  bio?: string;
+  location?: string;
+  joined_date?: string;
+  avatar_url?: string;
+}
+
+const MemberProfile = () => {
+  const { memberId } = useParams();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    getCurrentUser();
+    if (memberId) {
+      fetchProfile();
+    }
+  }, [memberId]);
+
+  const getCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUser(user);
+  };
+
+  const fetchProfile = async () => {
+    try {
+      // First try to get from profiles table
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', memberId)
+        .single();
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Error fetching profile:', profileError);
+      }
+
+      // Get user data from auth
+      const { data: userData, error: userError } = await supabase.auth.admin.getUserById(memberId!);
+      
+      if (userError) {
+        console.error('Error fetching user:', userError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch member profile",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Combine profile and user data
+      const combinedProfile: UserProfile = {
+        id: userData.user.id,
+        email: userData.user.email || '',
+        first_name: profileData?.first_name || userData.user.user_metadata?.first_name || '',
+        last_name: profileData?.last_name || userData.user.user_metadata?.last_name || '',
+        phone: profileData?.phone || userData.user.user_metadata?.phone || '',
+        bio: profileData?.bio || '',
+        location: profileData?.location || '',
+        joined_date: userData.user.created_at,
+        avatar_url: profileData?.avatar_url || userData.user.user_metadata?.avatar_url || ''
+      };
+
+      setProfile(combinedProfile);
+      setEditForm(combinedProfile);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch member profile",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!profile) return;
+
+    try {
+      // Update or insert profile data
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: profile.id,
+          first_name: editForm.first_name,
+          last_name: editForm.last_name,
+          phone: editForm.phone,
+          bio: editForm.bio,
+          location: editForm.location,
+          avatar_url: editForm.avatar_url
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      setProfile({ ...profile, ...editForm });
+      setEditing(false);
+      toast({
+        title: "Success",
+        description: "Profile updated successfully"
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update profile",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const isOwnProfile = currentUser?.id === memberId;
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="animate-pulse space-y-6">
+          <div className="flex items-center space-x-4">
+            <div className="w-24 h-24 bg-gray-200 rounded-full"></div>
+            <div className="space-y-2">
+              <div className="h-6 bg-gray-200 rounded w-48"></div>
+              <div className="h-4 bg-gray-200 rounded w-32"></div>
             </div>
           </div>
-          <Button className="bg-white/20 hover:bg-white/30 text-white border-white/30">
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Profile
-          </Button>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="h-64 bg-gray-200 rounded"></div>
+            </div>
+            <div className="space-y-6">
+              <div className="h-48 bg-gray-200 rounded"></div>
+            </div>
+          </div>
         </div>
       </div>
+    );
+  }
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Personal Information */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
-            <CardDescription>Your basic profile details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Full Name</label>
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                  <User className="h-4 w-4 text-gray-500" />
-                  <span>John Michael Doe</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Email Address</label>
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                  <Mail className="h-4 w-4 text-gray-500" />
-                  <span>john.doe@email.com</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Phone Number</label>
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                  <Phone className="h-4 w-4 text-gray-500" />
-                  <span>(555) 123-4567</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Location</label>
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                  <MapPin className="h-4 w-4 text-gray-500" />
-                  <span>New York, NY</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Join Date</label>
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                  <Calendar className="h-4 w-4 text-gray-500" />
-                  <span>March 15, 2020</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Member Level</label>
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                  <Badge className="bg-lambda-purple">Chapter Member</Badge>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Member Status */}
+  if (!profile) {
+    return (
+      <div className="p-6">
         <Card>
-          <CardHeader>
-            <CardTitle>Member Status</CardTitle>
-            <CardDescription>Current standing and achievements</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-              <div className="text-lg font-bold text-green-600">Active</div>
-              <p className="text-sm text-gray-600">Good Standing</p>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Dues Status</span>
-                <Badge className="bg-green-100 text-green-800">Paid</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Learning Progress</span>
-                <Badge className="bg-blue-100 text-blue-800">85%</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Service Hours</span>
-                <Badge className="bg-orange-100 text-orange-800">24.5h</Badge>
-              </div>
-            </div>
+          <CardContent className="p-6 text-center">
+            <p className="text-gray-500">Member profile not found</p>
           </CardContent>
         </Card>
       </div>
+    );
+  }
 
-      {/* Custom Labels */}
+  return (
+    <div className="p-6 space-y-6">
+      {/* Profile Header */}
       <Card>
-        <CardHeader>
-          <CardTitle>Member Labels</CardTitle>
-          <CardDescription>Custom labels assigned by administrators</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              Leadership Team
-            </Badge>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              Volunteer Coordinator
-            </Badge>
-            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-              Mentor
-            </Badge>
-            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-              Event Organizer
-            </Badge>
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-6">
+              <Avatar className="w-24 h-24">
+                <AvatarImage src={profile.avatar_url} />
+                <AvatarFallback className="text-2xl">
+                  {profile.first_name?.[0]}{profile.last_name?.[0]}
+                </AvatarFallback>
+              </Avatar>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold">
+                  {profile.first_name} {profile.last_name}
+                </h1>
+                <div className="flex items-center space-x-2 text-gray-600">
+                  <Mail className="w-4 h-4" />
+                  <span>{profile.email}</span>
+                </div>
+                {profile.phone && (
+                  <div className="flex items-center space-x-2 text-gray-600">
+                    <Phone className="w-4 h-4" />
+                    <span>{profile.phone}</span>
+                  </div>
+                )}
+                {profile.location && (
+                  <div className="flex items-center space-x-2 text-gray-600">
+                    <MapPin className="w-4 h-4" />
+                    <span>{profile.location}</span>
+                  </div>
+                )}
+                <div className="flex items-center space-x-2 text-gray-600">
+                  <Calendar className="w-4 h-4" />
+                  <span>Joined {new Date(profile.joined_date!).toLocaleDateString()}</span>
+                </div>
+              </div>
+            </div>
+            {isOwnProfile && (
+              <div className="flex space-x-2">
+                {editing ? (
+                  <>
+                    <Button onClick={handleSaveProfile} size="sm">
+                      <Save className="w-4 h-4 mr-2" />
+                      Save
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        setEditing(false);
+                        setEditForm(profile);
+                      }} 
+                      variant="outline" 
+                      size="sm"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button onClick={() => setEditing(true)} variant="outline" size="sm">
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Payment History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment History</CardTitle>
-          <CardDescription>Your dues payment record</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-              <div>
-                <p className="font-medium">Q4 2024 Dues</p>
-                <p className="text-sm text-gray-600">Paid on December 15, 2024</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Bio Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>About</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {editing ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="first_name">First Name</Label>
+                      <Input
+                        id="first_name"
+                        value={editForm.first_name || ''}
+                        onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="last_name">Last Name</Label>
+                      <Input
+                        id="last_name"
+                        value={editForm.last_name || ''}
+                        onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      value={editForm.phone || ''}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="location">Location</Label>
+                    <Input
+                      id="location"
+                      value={editForm.location || ''}
+                      onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="bio">Bio</Label>
+                    <Textarea
+                      id="bio"
+                      value={editForm.bio || ''}
+                      onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                      rows={4}
+                      placeholder="Tell us about yourself..."
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  {profile.bio ? (
+                    <p className="text-gray-700 leading-relaxed">{profile.bio}</p>
+                  ) : (
+                    <p className="text-gray-500 italic">No bio available</p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Accomplishments Section */}
+          <MemberAccomplishments memberId={profile.id} />
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Quick Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Stats</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Member Since</span>
+                <Badge variant="secondary">
+                  {new Date(profile.joined_date!).getFullYear()}
+                </Badge>
               </div>
-              <div className="text-right">
-                <div className="font-bold text-green-600">$150.00</div>
-                <Badge className="bg-green-100 text-green-800">Paid</Badge>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Status</span>
+                <Badge variant="default">Active</Badge>
               </div>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-              <div>
-                <p className="font-medium">Q3 2024 Dues</p>
-                <p className="text-sm text-gray-600">Paid on September 10, 2024</p>
-              </div>
-              <div className="text-right">
-                <div className="font-bold text-green-600">$150.00</div>
-                <Badge className="bg-green-100 text-green-800">Paid</Badge>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-              <div>
-                <p className="font-medium">Q2 2024 Dues</p>
-                <p className="text-sm text-gray-600">Paid on June 5, 2024</p>
-              </div>
-              <div className="text-right">
-                <div className="font-bold text-green-600">$150.00</div>
-                <Badge className="bg-green-100 text-green-800">Paid</Badge>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+
+          {/* Compact Accomplishments */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Accomplishments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MemberAccomplishments memberId={profile.id} showTitle={false} compact={true} />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default MemberProfile;

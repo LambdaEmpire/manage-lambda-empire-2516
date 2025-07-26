@@ -15,6 +15,7 @@ import Fundraising from '@/pages/Fundraising';
 import Communications from '@/pages/Communications';
 import Recruitment from '@/pages/Recruitment';
 import MemberProfile from '@/pages/MemberProfile';
+import AccomplishmentsManagement from '@/pages/AccomplishmentsManagement'; // Import the new component
 import './App.css';
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
               <Route path="admin" element={<AdminDashboard />} />
               <Route path="admin/members" element={<AdminMemberManagement />} />
               <Route path="admin/inbox-monitor" element={<AdminInboxMonitor />} />
+              <Route path="admin/accomplishments" element={<AccomplishmentsManagement />} /> {/* Add the new route */}
               <Route path="inbox" element={<MemberInbox />} />
               <Route path="empire-house" element={<EmpireHouse />} />
               <Route path="events" element={<Events />} />
@@ -36,7 +38,7 @@ function App() {
               <Route path="fundraising" element={<Fundraising />} />
               <Route path="communications" element={<Communications />} />
               <Route path="recruitment" element={<Recruitment />} />
-              <Route path="profile" element={<MemberProfile />} />
+              <Route path="profile/:memberId" element={<MemberProfile />} /> {/* Updated route to include memberId */}
             </Route>
           </Routes>
         </div>
