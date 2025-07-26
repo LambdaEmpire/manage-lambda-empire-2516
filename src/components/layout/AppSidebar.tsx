@@ -12,7 +12,8 @@ import {
   Shield,
   User,
   Mail,
-  Eye
+  Eye,
+  Award // Import the Award icon
 } from 'lucide-react';
 import {
   Sidebar,
@@ -81,6 +82,11 @@ const adminItems = [
     title: 'Inbox Monitor',
     url: '/admin/inbox-monitor',
     icon: Eye,
+  },
+  {
+    title: 'Accomplishments', // New item
+    url: '/admin/accomplishments', // New URL
+    icon: Award, // New icon
   },
   {
     title: 'Fundraising',
