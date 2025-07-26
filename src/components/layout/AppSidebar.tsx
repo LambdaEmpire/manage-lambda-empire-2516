@@ -15,7 +15,8 @@ import {
   Eye,
   Award,
   Star, // Import Star icon for Point System
-  ClipboardList // Import ClipboardList for Dues
+  ClipboardList, // Import ClipboardList for Dues
+  CreditCard // Import CreditCard for Payments
 } from 'lucide-react';
 import {
   Sidebar,
@@ -66,6 +67,11 @@ const memberItems = [
     title: 'The Empire House',
     url: '/empire-house',
     icon: TreePine,
+  },
+  {
+    title: 'Payments',
+    url: '/payments',
+    icon: CreditCard,
   },
 ];
 
