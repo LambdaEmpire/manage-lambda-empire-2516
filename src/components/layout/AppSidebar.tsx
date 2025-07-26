@@ -69,7 +69,7 @@ const memberItems = [
     icon: TreePine,
   },
   {
-    title: 'Payments',
+    title: 'Dues',
     url: '/payments',
     icon: CreditCard,
   },
