@@ -114,6 +114,7 @@ const members = [
     joinDate: '2020-03-15',
     status: 'Active',
     approvalStatus: 'approved',
+    genderAffiliation: 'Fraternity', // New field
     permissions: {
       // Core Access
       dashboard: true,
@@ -147,6 +148,7 @@ const members = [
     joinDate: '2019-08-22',
     status: 'Active',
     approvalStatus: 'pending',
+    genderAffiliation: 'Sorority', // New field
     permissions: {
       // Core Access
       dashboard: true,
@@ -180,6 +182,7 @@ const members = [
     joinDate: '2018-01-10',
     status: 'Active',
     approvalStatus: 'approved',
+    genderAffiliation: 'Fraternity', // New field
     permissions: {
       // Core Access
       dashboard: true,
@@ -199,6 +202,27 @@ const members = [
       treasuryAccess: true
     },
     labels: ['Executive Board', 'Financial Officer']
+  },
+  {
+    id: 'LEM001237',
+    name: 'Emily White',
+    email: 'emily.w@email.com',
+    phone: '(555) 456-7890',
+    level: 'National',
+    title: 'national_vp',
+    chapter: 'Delta Chapter',
+    region: 'West',
+    duesStatus: 'Paid',
+    joinDate: '2021-05-01',
+    status: 'Active',
+    approvalStatus: 'approved',
+    genderAffiliation: 'Sorority', // New field
+    permissions: {
+      dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
+      recruitment: true, communications: true, memberManagement: true, adminTools: true,
+      financialReports: true, nationalDues: true, fundraising: true, treasuryAccess: true
+    },
+    labels: ['National Leadership', 'Sorority Liaison']
   }
 ];
 
@@ -207,9 +231,10 @@ export default function AdminMemberManagement() {
   const [selectedLevel, setSelectedLevel] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedApprovalStatus, setSelectedApprovalStatus] = useState('all');
+  const [selectedGenderAffiliation, setSelectedGenderAffiliation] = useState('all'); // New state for gender affiliation filter
   const [selectedMember, setSelectedMember] = useState(null);
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
-  const [restrictMemberView, setRestrictMemberView] = useState(false); // New state for the toggle
+  const [restrictMemberView, setRestrictMemberView] = useState(false); // State for the toggle
 
   const filteredMembers = members.filter(member => {
     const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -218,21 +243,29 @@ export default function AdminMemberManagement() {
     const matchesLevel = selectedLevel === 'all' || member.level.toLowerCase() === selectedLevel;
     const matchesStatus = selectedStatus === 'all' || member.status.toLowerCase() === selectedStatus;
     const matchesApproval = selectedApprovalStatus === 'all' || member.approvalStatus === selectedApprovalStatus;
+    const matchesGenderAffiliation = selectedGenderAffiliation === 'all' || member.genderAffiliation === selectedGenderAffiliation; // New filter logic
     
-    // New logic for restricted member view
+    // Logic for restricted member view based on admin's level and gender affiliation
     if (restrictMemberView) {
-      // Example: Only show members from the same chapter for chapter-level leaders
-      // This logic would be more complex in a real app, based on the logged-in admin's role
-      const loggedInAdmin = members[0]; // Assuming John Doe is the logged-in admin for this example
+      // This is a simplified example. In a real app, the logged-in admin's data would come from auth context.
+      // For demonstration, let's assume the logged-in admin is Michael Brown (LEM001236 - National, Fraternity)
+      // or Emily White (LEM001237 - National, Sorority)
+      const loggedInAdmin = members[2]; // Michael Brown (Fraternity)
+      // const loggedInAdmin = members[3]; // Emily White (Sorority)
+
       if (loggedInAdmin.level === 'Chapter' && member.chapter !== loggedInAdmin.chapter) {
         return false;
       }
       if (loggedInAdmin.level === 'Regional' && member.region !== loggedInAdmin.region) {
         return false;
       }
+      // Specific logic for National Level members to see only their affiliation
+      if (loggedInAdmin.level === 'National' && loggedInAdmin.genderAffiliation && member.genderAffiliation !== loggedInAdmin.genderAffiliation) {
+        return false;
+      }
     }
 
-    return matchesSearch && matchesLevel && matchesStatus && matchesApproval;
+    return matchesSearch && matchesLevel && matchesStatus && matchesApproval && matchesGenderAffiliation;
   });
 
   const getTitleInfo = (titleValue) => {
@@ -280,7 +313,7 @@ export default function AdminMemberManagement() {
       <Card>
         <CardHeader>
           <CardTitle>Member Search & Filters</CardTitle>
-          <CardDescription>Find and filter members by various criteria including approval status</CardDescription>
+          <CardDescription>Find and filter members by various criteria including approval status and gender affiliation</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row gap-4">
@@ -326,6 +359,16 @@ export default function AdminMemberManagement() {
                 <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={selectedGenderAffiliation} onValueChange={setSelectedGenderAffiliation}>
+              <SelectTrigger className="w-full md:w-48">
+                <SelectValue placeholder="Gender Affiliation" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Affiliations</SelectItem>
+                <SelectItem value="Fraternity">Fraternity</SelectItem>
+                <SelectItem value="Sorority">Sorority</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex items-center space-x-2 mt-4">
             <Switch
@@ -333,7 +376,7 @@ export default function AdminMemberManagement() {
               checked={restrictMemberView}
               onCheckedChange={setRestrictMemberView}
             />
-            <Label htmlFor="restrict-member-view">Restrict Member View (based on admin's level)</Label>
+            <Label htmlFor="restrict-member-view">Restrict Member View (based on admin's level and affiliation)</Label>
           </div>
         </CardContent>
       </Card>
@@ -451,6 +494,7 @@ export default function AdminMemberManagement() {
                     <div className="space-y-2">
                       <p><span className="font-medium">Chapter:</span> {member.chapter}</p>
                       <p><span className="font-medium">Region:</span> {member.region}</p>
+                      <p><span className="font-medium">Affiliation:</span> {member.genderAffiliation}</p> {/* Display affiliation */}
                     </div>
                     <div className="space-y-2">
                       <p><span className="font-medium">Joined:</span> {new Date(member.joinDate).toLocaleDateString()}</p>
