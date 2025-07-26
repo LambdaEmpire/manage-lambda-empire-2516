@@ -24,7 +24,9 @@ import {
   TrendingUp,
   Crown,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Clock,
+  Award
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -87,7 +89,8 @@ const permissionCategories = [
       { key: 'communications', label: 'Communications', icon: MessageSquare, description: 'Send messages and announcements' },
       { key: 'memberManagement', label: 'Member Management', icon: Users, description: 'Manage other members' },
       { key: 'adminTools', label: 'Admin Tools', icon: Shield, description: 'Advanced administrative functions' },
-      { key: 'canApproveMembers', label: 'Can Approve Members', icon: CheckCircle, description: 'Can approve new member applications' } // New permission
+      { key: 'canApproveMembers', label: 'Can Approve Members', icon: CheckCircle, description: 'Can approve new member applications' },
+      { key: 'canApproveServiceHours', label: 'Can Approve Service Hours', icon: Award, description: 'Can approve or reject service hours submissions' }
     ]
   },
   {
@@ -116,11 +119,17 @@ const members = [
     status: 'Active',
     approvalStatus: 'approved',
     genderAffiliation: 'Fraternity',
-    city: 'New York', // New field
-    state: 'NY', // New field
+    city: 'New York',
+    state: 'NY',
+    serviceHours: {
+      pending: 12,
+      approved: 45,
+      rejected: 2,
+      total: 59
+    },
     permissions: {
       dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
-      recruitment: true, communications: true, memberManagement: false, adminTools: false, canApproveMembers: false, // New permission
+      recruitment: true, communications: true, memberManagement: false, adminTools: false, canApproveMembers: false, canApproveServiceHours: true,
       financialReports: false, nationalDues: false, fundraising: true, treasuryAccess: false
     },
     labels: ['Leadership Team', 'Volunteer Coordinator']
@@ -139,11 +148,17 @@ const members = [
     status: 'Active',
     approvalStatus: 'pending',
     genderAffiliation: 'Sorority',
-    city: 'Atlanta', // New field
-    state: 'GA', // New field
+    city: 'Atlanta',
+    state: 'GA',
+    serviceHours: {
+      pending: 8,
+      approved: 67,
+      rejected: 1,
+      total: 76
+    },
     permissions: {
       dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
-      recruitment: true, communications: true, memberManagement: true, adminTools: false, canApproveMembers: true, // New permission
+      recruitment: true, communications: true, memberManagement: true, adminTools: false, canApproveMembers: true, canApproveServiceHours: true,
       financialReports: true, nationalDues: false, fundraising: true, treasuryAccess: false
     },
     labels: ['Regional Coordinator', 'Mentor']
@@ -162,11 +177,17 @@ const members = [
     status: 'Active',
     approvalStatus: 'approved',
     genderAffiliation: 'Fraternity',
-    city: 'Chicago', // New field
-    state: 'IL', // New field
+    city: 'Chicago',
+    state: 'IL',
+    serviceHours: {
+      pending: 3,
+      approved: 89,
+      rejected: 0,
+      total: 92
+    },
     permissions: {
       dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
-      recruitment: true, communications: true, memberManagement: true, adminTools: true, canApproveMembers: true, // New permission
+      recruitment: true, communications: true, memberManagement: true, adminTools: true, canApproveMembers: true, canApproveServiceHours: true,
       financialReports: true, nationalDues: true, fundraising: true, treasuryAccess: true
     },
     labels: ['Executive Board', 'Financial Officer']
@@ -185,11 +206,17 @@ const members = [
     status: 'Active',
     approvalStatus: 'approved',
     genderAffiliation: 'Sorority',
-    city: 'Los Angeles', // New field
-    state: 'CA', // New field
+    city: 'Los Angeles',
+    state: 'CA',
+    serviceHours: {
+      pending: 5,
+      approved: 78,
+      rejected: 1,
+      total: 84
+    },
     permissions: {
       dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
-      recruitment: true, communications: true, memberManagement: true, adminTools: true, canApproveMembers: true, // New permission
+      recruitment: true, communications: true, memberManagement: true, adminTools: true, canApproveMembers: true, canApproveServiceHours: true,
       financialReports: true, nationalDues: true, fundraising: true, treasuryAccess: true
     },
     labels: ['National Leadership', 'Sorority Liaison']
@@ -204,6 +231,7 @@ export default function AdminMemberManagement() {
   const [selectedGenderAffiliation, setSelectedGenderAffiliation] = useState('all');
   const [selectedMember, setSelectedMember] = useState(null);
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
+  const [isServiceHoursDialogOpen, setIsServiceHoursDialogOpen] = useState(false);
   const [restrictMemberView, setRestrictMemberView] = useState(false);
 
   const filteredMembers = members.filter(member => {
@@ -217,11 +245,7 @@ export default function AdminMemberManagement() {
     
     // Logic for restricted member view based on admin's level and gender affiliation
     if (restrictMemberView) {
-      // This is a simplified example. In a real app, the logged-in admin's data would come from auth context.
-      // For demonstration, let's assume the logged-in admin is Michael Brown (LEM001236 - National, Fraternity)
-      // or Emily White (LEM001237 - National, Sorority)
       const loggedInAdmin = members[2]; // Michael Brown (Fraternity)
-      // const loggedInAdmin = members[3]; // Emily White (Sorority)
 
       if (loggedInAdmin.level === 'Chapter' && member.chapter !== loggedInAdmin.chapter) {
         return false;
@@ -229,7 +253,6 @@ export default function AdminMemberManagement() {
       if (loggedInAdmin.level === 'Regional' && member.region !== loggedInAdmin.region) {
         return false;
       }
-      // Specific logic for National Level members to see only their affiliation
       if (loggedInAdmin.level === 'National' && loggedInAdmin.genderAffiliation && member.genderAffiliation !== loggedInAdmin.genderAffiliation) {
         return false;
       }
@@ -252,13 +275,26 @@ export default function AdminMemberManagement() {
   };
 
   const updateMemberPermissions = (memberId, permissionKey, value) => {
-    // This would typically update the backend
     console.log(`Updating ${memberId} permission ${permissionKey} to ${value}`);
   };
 
   const updateMemberApproval = (memberId, status, reason = '') => {
-    // This would typically update the backend
     console.log(`Updating ${memberId} approval status to ${status}`, reason);
+  };
+
+  const toggleServiceHoursApproval = (memberId, enabled) => {
+    console.log(`Toggling service hours approval for ${memberId}: ${enabled}`);
+    // This would typically update the backend
+  };
+
+  const approveServiceHours = (memberId, hours) => {
+    console.log(`Approving ${hours} service hours for ${memberId}`);
+    // This would typically update the backend
+  };
+
+  const rejectServiceHours = (memberId, hours, reason) => {
+    console.log(`Rejecting ${hours} service hours for ${memberId}:`, reason);
+    // This would typically update the backend
   };
 
   return (
@@ -389,6 +425,12 @@ export default function AdminMemberManagement() {
                             {member.approvalStatus === 'pending' && <AlertTriangle className="h-3 w-3 mr-1" />}
                             {member.approvalStatus.charAt(0).toUpperCase() + member.approvalStatus.slice(1)}
                           </Badge>
+                          {member.serviceHours.pending > 0 && (
+                            <Badge className="bg-orange-100 text-orange-800">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {member.serviceHours.pending} hrs pending
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -413,6 +455,15 @@ export default function AdminMemberManagement() {
                         >
                           <Settings className="h-4 w-4 mr-2" />
                           Manage Permissions
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedMember(member);
+                            setIsServiceHoursDialogOpen(true);
+                          }}
+                        >
+                          <Award className="h-4 w-4 mr-2" />
+                          Service Hours Management
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <DollarSign className="h-4 w-4 mr-2" />
@@ -465,7 +516,7 @@ export default function AdminMemberManagement() {
                       <p><span className="font-medium">Chapter:</span> {member.chapter}</p>
                       <p><span className="font-medium">Region:</span> {member.region}</p>
                       <p><span className="font-medium">Affiliation:</span> {member.genderAffiliation}</p>
-                      <p><span className="font-medium">Location:</span> {member.city}, {member.state}</p> {/* Display city and state */}
+                      <p><span className="font-medium">Location:</span> {member.city}, {member.state}</p>
                     </div>
                     <div className="space-y-2">
                       <p><span className="font-medium">Joined:</span> {new Date(member.joinDate).toLocaleDateString()}</p>
@@ -477,6 +528,67 @@ export default function AdminMemberManagement() {
                         ))}
                       </div>
                     </div>
+                  </div>
+
+                  {/* Service Hours Summary */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <Award className="h-4 w-4 text-blue-600" />
+                        Service Hours Summary
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor={`service-approval-${member.id}`} className="text-sm">
+                          Can Approve Service Hours
+                        </Label>
+                        <Switch
+                          id={`service-approval-${member.id}`}
+                          checked={member.permissions.canApproveServiceHours}
+                          onCheckedChange={(checked) => toggleServiceHoursApproval(member.id, checked)}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-4 text-sm">
+                      <div className="text-center">
+                        <p className="font-semibold text-lg text-green-600">{member.serviceHours.approved}</p>
+                        <p className="text-gray-600">Approved</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-lg text-orange-600">{member.serviceHours.pending}</p>
+                        <p className="text-gray-600">Pending</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-lg text-red-600">{member.serviceHours.rejected}</p>
+                        <p className="text-gray-600">Rejected</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-lg text-blue-600">{member.serviceHours.total}</p>
+                        <p className="text-gray-600">Total</p>
+                      </div>
+                    </div>
+                    {member.serviceHours.pending > 0 && (
+                      <div className="flex gap-2 mt-3">
+                        <Button 
+                          size="sm" 
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => approveServiceHours(member.id, member.serviceHours.pending)}
+                        >
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Approve All Pending
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedMember(member);
+                            setIsServiceHoursDialogOpen(true);
+                          }}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          Review Details
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Enhanced Access Control Panel */}
@@ -557,6 +669,10 @@ export default function AdminMemberManagement() {
                       <FileText className="h-3 w-3 mr-1" />
                       View Reports
                     </Button>
+                    <Button size="sm" variant="outline">
+                      <Award className="h-3 w-3 mr-1" />
+                      Service Hours
+                    </Button>
                     {member.approvalStatus === 'pending' && (
                       <Button 
                         size="sm" 
@@ -574,6 +690,105 @@ export default function AdminMemberManagement() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Service Hours Management Dialog */}
+      <Dialog open={isServiceHoursDialogOpen} onOpenChange={setIsServiceHoursDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Service Hours Management</DialogTitle>
+            <DialogDescription>
+              Review and approve service hours for {selectedMember?.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedMember && (
+            <div className="space-y-6">
+              {/* Member Info */}
+              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                <Avatar className="h-12 w-12">
+                  <AvatarFallback className="bg-lambda-purple text-white">
+                    {selectedMember.name.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="font-semibold">{selectedMember.name}</h3>
+                  <p className="text-sm text-gray-600">{getTitleInfo(selectedMember.title).label}</p>
+                  <div className="flex gap-2 mt-1">
+                    <Badge className="bg-blue-100 text-blue-800">
+                      {selectedMember.serviceHours.total} Total Hours
+                    </Badge>
+                    {selectedMember.serviceHours.pending > 0 && (
+                      <Badge className="bg-orange-100 text-orange-800">
+                        {selectedMember.serviceHours.pending} Pending
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Service Hours Summary */}
+              <div className="grid grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-green-600">{selectedMember.serviceHours.approved}</div>
+                    <div className="text-sm text-gray-600">Approved Hours</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-orange-600">{selectedMember.serviceHours.pending}</div>
+                    <div className="text-sm text-gray-600">Pending Hours</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-red-600">{selectedMember.serviceHours.rejected}</div>
+                    <div className="text-sm text-gray-600">Rejected Hours</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Approval Toggle */}
+              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                <div>
+                  <h4 className="font-medium">Service Hours Approval Permission</h4>
+                  <p className="text-sm text-gray-600">Allow this member to approve service hours for others</p>
+                </div>
+                <Switch
+                  checked={selectedMember.permissions.canApproveServiceHours}
+                  onCheckedChange={(checked) => toggleServiceHoursApproval(selectedMember.id, checked)}
+                />
+              </div>
+
+              {/* Bulk Actions */}
+              <div className="flex gap-3">
+                <Button 
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => approveServiceHours(selectedMember.id, selectedMember.serviceHours.pending)}
+                  disabled={selectedMember.serviceHours.pending === 0}
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Approve All Pending ({selectedMember.serviceHours.pending} hrs)
+                </Button>
+                <Button 
+                  variant="outline"
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                  disabled={selectedMember.serviceHours.pending === 0}
+                >
+                  <UserX className="h-4 w-4 mr-2" />
+                  Reject All Pending
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsServiceHoursDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Advanced Permission Management Dialog */}
       <Dialog open={isPermissionDialogOpen} onOpenChange={setIsPermissionDialogOpen}>
@@ -717,6 +932,10 @@ export default function AdminMemberManagement() {
             <Button variant="outline">
               <CheckCircle className="h-4 w-4 mr-2" />
               Bulk Approve Access
+            </Button>
+            <Button variant="outline">
+              <Award className="h-4 w-4 mr-2" />
+              Bulk Service Hours Approval
             </Button>
           </div>
         </CardContent>
