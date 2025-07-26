@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import MemberDashboard from '@/pages/MemberDashboard';
 import AdminDashboard from '@/pages/AdminDashboard';
+import AdminMemberManagement from '@/pages/AdminMemberManagement';
 import EmpireHouse from '@/pages/EmpireHouse';
 import Events from '@/pages/Events';
 import LambdaKnowledge from '@/pages/LambdaKnowledge';
@@ -23,6 +24,7 @@ function App() {
             <Route path="/" element={<DashboardLayout />}>
               <Route index element={<MemberDashboard />} />
               <Route path="admin" element={<AdminDashboard />} />
+              <Route path="admin/members" element={<AdminMemberManagement />} />
               <Route path="empire-house" element={<EmpireHouse />} />
               <Route path="events" element={<Events />} />
               <Route path="lambda-knowledge" element={<LambdaKnowledge />} />
