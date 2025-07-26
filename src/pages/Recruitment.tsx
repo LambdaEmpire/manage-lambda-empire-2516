@@ -25,7 +25,11 @@ import {
   MoreHorizontal,
   Plus,
   Filter,
-  Search
+  Search,
+  Settings,
+  Trash2,
+  Save,
+  X
 } from 'lucide-react';
 import {
   Select,
@@ -48,6 +52,17 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useState } from 'react';
 
 const applications = [
@@ -104,6 +119,63 @@ const applications = [
   }
 ];
 
+// Default pledge requirements template
+const defaultPledgeRequirements = [
+  {
+    id: 'orientation',
+    name: 'Orientation',
+    description: 'Complete new member orientation session',
+    type: 'completion',
+    required: true,
+    order: 1,
+    icon: 'Users',
+    color: 'blue'
+  },
+  {
+    id: 'communityService',
+    name: 'Community Service',
+    description: 'Complete required community service hours',
+    type: 'hours',
+    target: 20,
+    required: true,
+    order: 2,
+    icon: 'Heart',
+    color: 'green'
+  },
+  {
+    id: 'mentorship',
+    name: 'Mentorship Sessions',
+    description: 'Attend one-on-one mentorship meetings',
+    type: 'sessions',
+    target: 8,
+    required: true,
+    order: 3,
+    icon: 'User',
+    color: 'purple'
+  },
+  {
+    id: 'education',
+    name: 'Educational Modules',
+    description: 'Complete Lambda Knowledge learning modules',
+    type: 'modules',
+    target: 5,
+    required: true,
+    order: 4,
+    icon: 'GraduationCap',
+    color: 'orange'
+  },
+  {
+    id: 'finalReview',
+    name: 'Final Review',
+    description: 'Final evaluation and membership approval',
+    type: 'completion',
+    required: true,
+    order: 5,
+    icon: 'CheckCircle',
+    color: 'gold'
+  }
+];
+
 const pledges = [
   {
     id: 'PLG001',
@@ -114,9 +186,9 @@ const pledges = [
     currentPhase: 'Community Service',
     requirements: {
       orientation: { completed: true, date: '2024-12-23' },
-      communityService: { completed: false, hours: 15, required: 20 },
-      mentorship: { completed: true, sessions: 8, required: 8 },
-      education: { completed: false, modules: 3, required: 5 },
+      communityService: { completed: false, current: 15, target: 20 },
+      mentorship: { completed: true, current: 8, target: 8 },
+      education: { completed: false, current: 3, target: 5 },
       finalReview: { completed: false, scheduled: '2025-01-15' }
     },
     mentor: 'Sarah Thompson',
@@ -131,9 +203,9 @@ const pledges = [
     currentPhase: 'Final Review',
     requirements: {
       orientation: { completed: true, date: '2024-11-15' },
-      communityService: { completed: true, hours: 25, required: 20 },
-      mentorship: { completed: true, sessions: 8, required: 8 },
-      education: { completed: true, modules: 5, required: 5 },
+      communityService: { completed: true, current: 25, target: 20 },
+      mentorship: { completed: true, current: 8, target: 8 },
+      education: { completed: true, current: 5, target: 5 },
       finalReview: { completed: false, scheduled: '2025-01-05' }
     },
     mentor: 'Michael Brown',
@@ -145,6 +217,9 @@ export default function Recruitment() {
   const [activeTab, setActiveTab] = useState('applications');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [pledgeRequirements, setPledgeRequirements] = useState(defaultPledgeRequirements);
+  const [isCustomizing, setIsCustomizing] = useState(false);
+  const [editingRequirement, setEditingRequirement] = useState(null);
 
   const filteredApplications = applications.filter(app => {
     const matchesSearch = app.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -152,6 +227,46 @@ export default function Recruitment() {
     const matchesStatus = statusFilter === 'all' || app.status.toLowerCase() === statusFilter.toLowerCase();
     return matchesSearch && matchesStatus;
   });
+
+  const addNewRequirement = () => {
+    const newRequirement = {
+      id: `custom_${Date.now()}`,
+      name: 'New Requirement',
+      description: 'Description of the new requirement',
+      type: 'completion',
+      required: true,
+      order: pledgeRequirements.length + 1,
+      icon: 'CheckCircle',
+      color: 'blue'
+    };
+    setPledgeRequirements([...pledgeRequirements, newRequirement]);
+    setEditingRequirement(newRequirement.id);
+  };
+
+  const updateRequirement = (id, updates) => {
+    setPledgeRequirements(prev => 
+      prev.map(req => req.id === id ? { ...req, ...updates } : req)
+    );
+  };
+
+  const deleteRequirement = (id) => {
+    setPledgeRequirements(prev => prev.filter(req => req.id !== id));
+  };
+
+  const reorderRequirements = (dragIndex, hoverIndex) => {
+    const draggedItem = pledgeRequirements[dragIndex];
+    const newRequirements = [...pledgeRequirements];
+    newRequirements.splice(dragIndex, 1);
+    newRequirements.splice(hoverIndex, 0, draggedItem);
+    
+    // Update order numbers
+    const reorderedRequirements = newRequirements.map((req, index) => ({
+      ...req,
+      order: index + 1
+    }));
+    
+    setPledgeRequirements(reorderedRequirements);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -462,14 +577,168 @@ export default function Recruitment() {
           </Card>
         </TabsContent>
 
-        {/* Pledge Tracking Tab */}
+        {/* Enhanced Pledge Tracking Tab with Customization */}
         <TabsContent value="pledges" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Active Pledges</CardTitle>
-              <CardDescription>Track pledge progress and requirements</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Active Pledges</CardTitle>
+                  <CardDescription>Track pledge progress and customize requirements</CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={isCustomizing ? "default" : "outline"}
+                    onClick={() => setIsCustomizing(!isCustomizing)}
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    {isCustomizing ? 'Save Changes' : 'Customize Process'}
+                  </Button>
+                  {isCustomizing && (
+                    <Button onClick={addNewRequirement} size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Requirement
+                    </Button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
+              {/* Customization Panel */}
+              {isCustomizing && (
+                <Card className="mb-6 border-2 border-dashed border-lambda-purple">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Customize Pledge Requirements</CardTitle>
+                    <CardDescription>
+                      Drag to reorder, click to edit, or delete requirements. Changes apply to all new pledges.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {pledgeRequirements
+                        .sort((a, b) => a.order - b.order)
+                        .map((requirement, index) => (
+                        <div
+                          key={requirement.id}
+                          className="flex items-center gap-4 p-4 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-2 text-gray-500">
+                            <span className="text-sm font-mono">{requirement.order}</span>
+                          </div>
+                          
+                          <div className="flex-1">
+                            {editingRequirement === requirement.id ? (
+                              <div className="space-y-2">
+                                <Input
+                                  value={requirement.name}
+                                  onChange={(e) => updateRequirement(requirement.id, { name: e.target.value })}
+                                  placeholder="Requirement name"
+                                />
+                                <Textarea
+                                  value={requirement.description}
+                                  onChange={(e) => updateRequirement(requirement.id, { description: e.target.value })}
+                                  placeholder="Requirement description"
+                                  rows={2}
+                                />
+                                <div className="flex gap-4">
+                                  <Select
+                                    value={requirement.type}
+                                    onValueChange={(value) => updateRequirement(requirement.id, { type: value })}
+                                  >
+                                    <SelectTrigger className="w-48">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="completion">Completion Task</SelectItem>
+                                      <SelectItem value="hours">Hours Required</SelectItem>
+                                      <SelectItem value="sessions">Sessions Required</SelectItem>
+                                      <SelectItem value="modules">Modules Required</SelectItem>
+                                      <SelectItem value="points">Points Required</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  
+                                  {['hours', 'sessions', 'modules', 'points'].includes(requirement.type) && (
+                                    <Input
+                                      type="number"
+                                      value={requirement.target || 0}
+                                      onChange={(e) => updateRequirement(requirement.id, { target: parseInt(e.target.value) })}
+                                      placeholder="Target amount"
+                                      className="w-32"
+                                    />
+                                  )}
+                                  
+                                  <div className="flex items-center gap-2">
+                                    <Switch
+                                      checked={requirement.required}
+                                      onCheckedChange={(checked) => updateRequirement(requirement.id, { required: checked })}
+                                    />
+                                    <Label className="text-sm">Required</Label>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                <h4 className="font-medium">{requirement.name}</h4>
+                                <p className="text-sm text-gray-600">{requirement.description}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge variant="outline" className="text-xs">
+                                    {requirement.type}
+                                    {requirement.target && ` (${requirement.target})`}
+                                  </Badge>
+                                  {requirement.required && (
+                                    <Badge className="bg-red-100 text-red-800 text-xs">Required</Badge>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            {editingRequirement === requirement.id ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => setEditingRequirement(null)}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  <Save className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setEditingRequirement(null)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setEditingRequirement(requirement.id)}
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => deleteRequirement(requirement.id)}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Active Pledges List */}
               <div className="space-y-6">
                 {pledges.map((pledge) => (
                   <div key={pledge.id} className="border rounded-lg p-6 space-y-4">
@@ -501,78 +770,58 @@ export default function Recruitment() {
                       <Progress value={pledge.progress} className="h-2" />
                     </div>
 
+                    {/* Dynamic Requirements Display */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                      <div className={`p-3 rounded-lg border ${pledge.requirements.orientation.completed ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          {pledge.requirements.orientation.completed ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Clock className="h-4 w-4 text-gray-500" />
-                          )}
-                          <span className="text-sm font-medium">Orientation</span>
-                        </div>
-                        {pledge.requirements.orientation.completed && (
-                          <p className="text-xs text-gray-600">
-                            Completed: {new Date(pledge.requirements.orientation.date).toLocaleDateString()}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className={`p-3 rounded-lg border ${pledge.requirements.communityService.completed ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          {pledge.requirements.communityService.completed ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Clock className="h-4 w-4 text-yellow-600" />
-                          )}
-                          <span className="text-sm font-medium">Service Hours</span>
-                        </div>
-                        <p className="text-xs text-gray-600">
-                          {pledge.requirements.communityService.hours}/{pledge.requirements.communityService.required} hours
-                        </p>
-                      </div>
-
-                      <div className={`p-3 rounded-lg border ${pledge.requirements.mentorship.completed ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          {pledge.requirements.mentorship.completed ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Clock className="h-4 w-4 text-gray-500" />
-                          )}
-                          <span className="text-sm font-medium">Mentorship</span>
-                        </div>
-                        <p className="text-xs text-gray-600">
-                          {pledge.requirements.mentorship.sessions}/{pledge.requirements.mentorship.required} sessions
-                        </p>
-                      </div>
-
-                      <div className={`p-3 rounded-lg border ${pledge.requirements.education.completed ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          {pledge.requirements.education.completed ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Clock className="h-4 w-4 text-yellow-600" />
-                          )}
-                          <span className="text-sm font-medium">Education</span>
-                        </div>
-                        <p className="text-xs text-gray-600">
-                          {pledge.requirements.education.modules}/{pledge.requirements.education.required} modules
-                        </p>
-                      </div>
-
-                      <div className={`p-3 rounded-lg border ${pledge.requirements.finalReview.completed ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          {pledge.requirements.finalReview.completed ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Calendar className="h-4 w-4 text-blue-600" />
-                          )}
-                          <span className="text-sm font-medium">Final Review</span>
-                        </div>
-                        <p className="text-xs text-gray-600">
-                          Scheduled: {new Date(pledge.requirements.finalReview.scheduled).toLocaleDateString()}
-                        </p>
-                      </div>
+                      {pledgeRequirements
+                        .sort((a, b) => a.order - b.order)
+                        .map((requirement) => {
+                        const pledgeReq = pledge.requirements[requirement.id];
+                        const isCompleted = pledgeReq?.completed || false;
+                        const current = pledgeReq?.current || 0;
+                        const target = requirement.target || pledgeReq?.target || 1;
+                        
+                        return (
+                          <div
+                            key={requirement.id}
+                            className={`p-3 rounded-lg border ${
+                              isCompleted 
+                                ? 'bg-green-50 border-green-200' 
+                                : current > 0 
+                                  ? 'bg-yellow-50 border-yellow-200'
+                                  : 'bg-gray-50 border-gray-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              {isCompleted ? (
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              ) : current > 0 ? (
+                                <Clock className="h-4 w-4 text-yellow-600" />
+                              ) : (
+                                <Clock className="h-4 w-4 text-gray-500" />
+                              )}
+                              <span className="text-sm font-medium">{requirement.name}</span>
+                            </div>
+                            
+                            {requirement.type === 'completion' ? (
+                              pledgeReq?.date && (
+                                <p className="text-xs text-gray-600">
+                                  Completed: {new Date(pledgeReq.date).toLocaleDateString()}
+                                </p>
+                              )
+                            ) : (
+                              <div className="space-y-1">
+                                <p className="text-xs text-gray-600">
+                                  {current}/{target} {requirement.type}
+                                </p>
+                                <Progress 
+                                  value={(current / target) * 100} 
+                                  className="h-1" 
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
 
                     <div className="flex flex-wrap gap-2 pt-2">
@@ -709,37 +958,53 @@ export default function Recruitment() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Pledge Requirements</CardTitle>
-                <CardDescription>Configure pledge process and requirements</CardDescription>
+                <CardTitle>Pledge Process Templates</CardTitle>
+                <CardDescription>Quick setup templates for common pledge processes</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Pledge Period Duration</label>
-                  <Select defaultValue="8">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="6">6 weeks</SelectItem>
-                      <SelectItem value="8">8 weeks</SelectItem>
-                      <SelectItem value="10">10 weeks</SelectItem>
-                      <SelectItem value="12">12 weeks</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-3">
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={() => setPledgeRequirements(defaultPledgeRequirements)}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Standard Process (5 phases)
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={() => setPledgeRequirements([
+                      ...defaultPledgeRequirements,
+                      {
+                        id: 'interview',
+                        name: 'Exit Interview',
+                        description: 'Final interview before membership',
+                        type: 'completion',
+                        required: true,
+                        order: 6,
+                        icon: 'MessageSquare',
+                        color: 'indigo'
+                      }
+                    ])}
+                  >
+                    <Star className="h-4 w-4 mr-2" />
+                    Extended Process (6 phases)
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={() => setPledgeRequirements([
+                      defaultPledgeRequirements[0], // Orientation
+                      defaultPledgeRequirements[1], // Community Service
+                      defaultPledgeRequirements[4]  // Final Review
+                    ])}
+                  >
+                    <Clock className="h-4 w-4 mr-2" />
+                    Fast Track (3 phases)
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Required Service Hours</label>
-                  <Input type="number" defaultValue="20" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Required Mentorship Sessions</label>
-                  <Input type="number" defaultValue="8" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Required Education Modules</label>
-                  <Input type="number" defaultValue="5" />
-                </div>
-                <Button>Save Pledge Settings</Button>
+                <Button>Apply Template</Button>
               </CardContent>
             </Card>
 
