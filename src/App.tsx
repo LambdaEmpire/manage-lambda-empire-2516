@@ -22,6 +22,8 @@ import AccomplishmentsManagement from '@/pages/AccomplishmentsManagement';
 import StatusManagement from '@/pages/StatusManagement';
 import PaymentCenter from '@/pages/PaymentCenter';
 import AdminPaymentManagementPage from '@/pages/AdminPaymentManagement';
+import MemberPointSystem from '@/components/MemberPointSystem';
+import QuarterlyDuesManagement from '@/components/QuarterlyDuesManagement';
 import './App.css';
 
 function App() {
@@ -49,6 +51,8 @@ function App() {
           <Route path="admin/accomplishments" element={<AccomplishmentsManagement />} />
           <Route path="admin/status-management" element={<StatusManagement />} />
           <Route path="admin/payments" element={<AdminPaymentManagementPage />} />
+          <Route path="admin/points" element={<MemberPointSystem />} />
+          <Route path="admin/dues" element={<QuarterlyDuesManagement />} />
           <Route path="payments" element={<PaymentCenter />} />
           <Route path="inbox" element={<MemberInbox />} />
           <Route path="empire-house" element={<EmpireHouse />} />
