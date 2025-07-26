@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toaster';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import Login from '@/pages/Login';
 import MemberDashboard from '@/pages/MemberDashboard';
 import AdminDashboard from '@/pages/AdminDashboard';
 import AdminMemberManagement from '@/pages/AdminMemberManagement';
@@ -15,35 +16,42 @@ import Fundraising from '@/pages/Fundraising';
 import Communications from '@/pages/Communications';
 import Recruitment from '@/pages/Recruitment';
 import MemberProfile from '@/pages/MemberProfile';
-import AccomplishmentsManagement from '@/pages/AccomplishmentsManagement'; // Import the new component
+import AccomplishmentsManagement from '@/pages/AccomplishmentsManagement';
 import './App.css';
 
 function App() {
   return (
     <Router>
-      <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100">
-          <Routes>
-            <Route path="/" element={<DashboardLayout />}>
-              <Route index element={<MemberDashboard />} />
-              <Route path="admin" element={<AdminDashboard />} />
-              <Route path="admin/members" element={<AdminMemberManagement />} />
-              <Route path="admin/inbox-monitor" element={<AdminInboxMonitor />} />
-              <Route path="admin/accomplishments" element={<AccomplishmentsManagement />} /> {/* Add the new route */}
-              <Route path="inbox" element={<MemberInbox />} />
-              <Route path="empire-house" element={<EmpireHouse />} />
-              <Route path="events" element={<Events />} />
-              <Route path="lambda-knowledge" element={<LambdaKnowledge />} />
-              <Route path="service-hours" element={<ServiceHours />} />
-              <Route path="fundraising" element={<Fundraising />} />
-              <Route path="communications" element={<Communications />} />
-              <Route path="recruitment" element={<Recruitment />} />
-              <Route path="profile/:memberId" element={<MemberProfile />} /> {/* Updated route to include memberId */}
-            </Route>
-          </Routes>
-        </div>
-        <Toaster />
-      </SidebarProvider>
+      <Routes>
+        {/* Login route - outside of dashboard layout */}
+        <Route path="/login" element={<Login />} />
+        
+        {/* Dashboard routes - inside dashboard layout */}
+        <Route path="/" element={
+          <SidebarProvider>
+            <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100">
+              <DashboardLayout />
+            </div>
+          </SidebarProvider>
+        }>
+          <Route index element={<MemberDashboard />} />
+          <Route path="member-dashboard" element={<MemberDashboard />} />
+          <Route path="admin-dashboard" element={<AdminDashboard />} />
+          <Route path="admin/members" element={<AdminMemberManagement />} />
+          <Route path="admin/inbox-monitor" element={<AdminInboxMonitor />} />
+          <Route path="admin/accomplishments" element={<AccomplishmentsManagement />} />
+          <Route path="inbox" element={<MemberInbox />} />
+          <Route path="empire-house" element={<EmpireHouse />} />
+          <Route path="events" element={<Events />} />
+          <Route path="lambda-knowledge" element={<LambdaKnowledge />} />
+          <Route path="service-hours" element={<ServiceHours />} />
+          <Route path="fundraising" element={<Fundraising />} />
+          <Route path="communications" element={<Communications />} />
+          <Route path="recruitment" element={<Recruitment />} />
+          <Route path="profile/:memberId" element={<MemberProfile />} />
+        </Route>
+      </Routes>
+      <Toaster />
     </Router>
   );
 }
