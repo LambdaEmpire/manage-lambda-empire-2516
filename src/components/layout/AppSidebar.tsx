@@ -13,7 +13,9 @@ import {
   User,
   Mail,
   Eye,
-  Award // Import the Award icon
+  Award,
+  Star, // Import Star icon for Point System
+  ClipboardList // Import ClipboardList for Dues
 } from 'lucide-react';
 import {
   Sidebar,
@@ -70,7 +72,7 @@ const memberItems = [
 const adminItems = [
   {
     title: 'Admin Dashboard',
-    url: '/admin',
+    url: '/admin-dashboard',
     icon: Shield,
   },
   {
@@ -84,9 +86,9 @@ const adminItems = [
     icon: Eye,
   },
   {
-    title: 'Accomplishments', // New item
-    url: '/admin/accomplishments', // New URL
-    icon: Award, // New icon
+    title: 'Accomplishments',
+    url: '/admin/accomplishments',
+    icon: Award,
   },
   {
     title: 'Fundraising',
@@ -104,9 +106,24 @@ const adminItems = [
     icon: UserPlus,
   },
   {
-    title: 'Settings',
-    url: '/admin/settings',
+    title: 'Status Management',
+    url: '/admin/status-management',
     icon: Settings,
+  },
+  {
+    title: 'Payment Management',
+    url: '/admin/payments',
+    icon: DollarSign,
+  },
+  {
+    title: 'Member Point System',
+    url: '/admin/points',
+    icon: Star,
+  },
+  {
+    title: 'Quarterly Dues',
+    url: '/admin/dues',
+    icon: ClipboardList,
   },
 ];
 
