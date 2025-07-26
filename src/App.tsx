@@ -3,6 +3,8 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toaster';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Login from '@/pages/Login';
+import SuperAdminSetup from '@/pages/SuperAdminSetup';
+import AdminCreation from '@/pages/AdminCreation';
 import MemberDashboard from '@/pages/MemberDashboard';
 import AdminDashboard from '@/pages/AdminDashboard';
 import AdminMemberManagement from '@/pages/AdminMemberManagement';
@@ -23,8 +25,9 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Login route - outside of dashboard layout */}
+        {/* Authentication routes - outside of dashboard layout */}
         <Route path="/login" element={<Login />} />
+        <Route path="/setup" element={<SuperAdminSetup />} />
         
         {/* Dashboard routes - inside dashboard layout */}
         <Route path="/" element={
@@ -38,6 +41,7 @@ function App() {
           <Route path="member-dashboard" element={<MemberDashboard />} />
           <Route path="admin-dashboard" element={<AdminDashboard />} />
           <Route path="admin/members" element={<AdminMemberManagement />} />
+          <Route path="admin/create-admin" element={<AdminCreation />} />
           <Route path="admin/inbox-monitor" element={<AdminInboxMonitor />} />
           <Route path="admin/accomplishments" element={<AccomplishmentsManagement />} />
           <Route path="inbox" element={<MemberInbox />} />
