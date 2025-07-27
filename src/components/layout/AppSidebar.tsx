@@ -49,6 +49,11 @@ const memberItems = [
     icon: User,
   },
   {
+    title: 'Member Directory', // Added Member Directory
+    url: '/member-directory',
+    icon: Users,
+  },
+  {
     title: 'Events',
     url: '/events',
     icon: Calendar,

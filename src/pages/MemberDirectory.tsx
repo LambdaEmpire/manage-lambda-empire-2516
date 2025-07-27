@@ -74,7 +74,8 @@ const members = [
       accomplishments: 'public',
       joinDate: 'members'
     },
-    labels: ['Leadership Team', 'Volunteer Coordinator']
+    labels: ['Leadership Team', 'Volunteer Coordinator'],
+    invisible: false // New field for invisibility
   },
   {
     id: 'LEM001235',
@@ -104,7 +105,8 @@ const members = [
       accomplishments: 'public',
       joinDate: 'public'
     },
-    labels: ['Regional Coordinator', 'Mentor']
+    labels: ['Regional Coordinator', 'Mentor'],
+    invisible: false
   },
   {
     id: 'LEM001236',
@@ -134,7 +136,8 @@ const members = [
       accomplishments: 'public',
       joinDate: 'members'
     },
-    labels: ['Executive Board', 'Financial Officer']
+    labels: ['Executive Board', 'Financial Officer'],
+    invisible: false
   },
   {
     id: 'LEM001237',
@@ -164,11 +167,12 @@ const members = [
       accomplishments: 'public',
       joinDate: 'public'
     },
-    labels: ['National Leadership', 'Sorority Liaison']
+    labels: ['National Leadership', 'Sorority Liaison'],
+    invisible: false
   }
 ];
 
-const memberTitles = {
+const memberTitlesMap = { // Renamed to avoid conflict with memberTitles array
   'national_president': 'National President',
   'national_vp': 'National Vice President',
   'national_secretary': 'National Secretary',
@@ -189,16 +193,25 @@ export default function MemberDirectory() {
   const [selectedChapter, setSelectedChapter] = useState('all');
   const [selectedGenderAffiliation, setSelectedGenderAffiliation] = useState('all');
   const [viewMode, setViewMode] = useState('grid'); // grid or list
-  const [currentUser] = useState(members[0]); // Simulate logged-in user
+  const [currentUser, setCurrentUser] = useState(members[0]); // Simulate logged-in user
   const [isPrivacyDialogOpen, setIsPrivacyDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const { toast } = useToast();
+
+  // Simulate admin/national board roles for the current user
+  const isCurrentUserAdmin = currentUser.id === 'LEM001236'; // Michael Brown is admin
+  const isCurrentUserNationalBoard = currentUser.level === 'National';
 
   // Get unique values for filters
   const regions = [...new Set(members.map(m => m.region))];
   const chapters = [...new Set(members.map(m => m.chapter))];
 
   const filteredMembers = members.filter(member => {
+    // If member is invisible, only show to admins/national board
+    if (member.invisible && !(isCurrentUserAdmin || isCurrentUserNationalBoard)) {
+      return false;
+    }
+
     const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          member.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (canViewField(member, 'email') && member.email.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -217,17 +230,34 @@ export default function MemberDirectory() {
     const privacy = member.privacy[field];
     if (privacy === 'public') return true;
     if (privacy === 'private') return false;
-    if (privacy === 'members') return true; // Assuming current user is a member
+    if (privacy === 'members') return !member.invisible; // Members only if not invisible
     
     return false;
   };
 
   const updatePrivacySetting = (field, value) => {
     // In a real app, this would update the backend
-    console.log(`Updating privacy for ${field} to ${value}`);
+    setCurrentUser(prev => ({
+      ...prev,
+      privacy: {
+        ...prev.privacy,
+        [field]: value
+      }
+    }));
     toast({
       title: "Privacy Updated",
       description: `${field} privacy setting has been updated to ${value}.`,
+    });
+  };
+
+  const toggleInvisibleMode = (invisible) => {
+    setCurrentUser(prev => ({
+      ...prev,
+      invisible: invisible
+    }));
+    toast({
+      title: "Visibility Updated",
+      description: `You are now ${invisible ? 'invisible' : 'visible'} to other members.`,
     });
   };
 
@@ -257,16 +287,27 @@ export default function MemberDirectory() {
               <p className="text-white/90 mt-1">Connect with fellow Lambda Empire members</p>
             </div>
           </div>
-          <Button 
-            onClick={() => {
-              setSelectedMember(currentUser);
-              setIsPrivacyDialogOpen(true);
-            }}
-            className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            Privacy Settings
-          </Button>
+          <div className="flex items-center gap-4">
+            {/* Go Invisible Toggle */}
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="invisible-mode" className="text-white">Go Invisible</Label>
+              <Switch
+                id="invisible-mode"
+                checked={currentUser.invisible}
+                onCheckedChange={toggleInvisibleMode}
+              />
+            </div>
+            <Button 
+              onClick={() => {
+                setSelectedMember(currentUser);
+                setIsPrivacyDialogOpen(true);
+              }}
+              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Privacy Settings
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -356,7 +397,7 @@ export default function MemberDirectory() {
                       <h3 className="font-semibold text-lg">{member.name}</h3>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         {getTitleIcon(member.title)}
-                        <span>{memberTitles[member.title]}</span>
+                        <span>{memberTitlesMap[member.title]}</span>
                       </div>
                       <Badge className="mt-1 text-xs" variant="outline">
                         {member.genderAffiliation}
