@@ -275,6 +275,15 @@ export default function MemberDirectory() {
     return <UserCheck className="h-4 w-4 text-gray-600" />;
   };
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Active': return 'bg-green-100 text-green-800';
+      case 'Inactive': return 'bg-gray-100 text-gray-800';
+      case 'Suspended': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -399,6 +408,9 @@ export default function MemberDirectory() {
                         {getTitleIcon(member.title)}
                         <span>{memberTitlesMap[member.title]}</span>
                       </div>
+                      <Badge className={`mt-1 text-xs ${getStatusColor(member.status)}`}>
+                        {member.status}
+                      </Badge>
                       <Badge className="mt-1 text-xs" variant="outline">
                         {member.genderAffiliation}
                       </Badge>
