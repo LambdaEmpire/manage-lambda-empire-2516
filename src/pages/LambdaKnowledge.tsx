@@ -1,19 +1,95 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { GraduationCap, BookOpen, Video, CheckCircle, Clock } from 'lucide-react';
+import { GraduationCap, BookOpen, Video, CheckCircle, Clock, Plus } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LambdaKnowledge() {
+  const [canAddKnowledge, setCanAddKnowledge] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  // Check user permissions on component mount
+  useEffect(() => {
+    checkUserPermissions();
+  }, []);
+
+  const checkUserPermissions = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // Check if user has permission to add knowledge
+      const { data: addKnowledgePermission } = await supabase
+        .from('user_permissions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('permission_type', 'add_knowledge')
+        .maybeSingle();
+
+      // Check if user is admin
+      const { data: adminPermission } = await supabase
+        .from('user_permissions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('permission_type', 'admin')
+        .maybeSingle();
+
+      setCanAddKnowledge(!!addKnowledgePermission || !!adminPermission);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error checking permissions:', error);
+      setLoading(false);
+    }
+  };
+
+  const handleAddKnowledge = () => {
+    if (!canAddKnowledge) {
+      toast({
+        title: "Permission Denied",
+        description: "You don't have permission to add knowledge articles.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Here you can add logic to open a form dialog or navigate to an add knowledge page
+    toast({
+      title: "Add Knowledge",
+      description: "Opening knowledge article creation form...",
+    });
+    
+    // For now, just show a placeholder message
+    // You can implement the actual form logic later
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="bg-gradient-to-r from-green-500 to-blue-600 p-6 rounded-xl text-white">
-        <div className="flex items-center gap-4">
-          <GraduationCap className="h-12 w-12" />
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Lambda Knowledge</h1>
-            <p className="text-white/90 mt-1">Online Learning Management System</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <GraduationCap className="h-12 w-12" />
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">Lambda Knowledge</h1>
+              <p className="text-white/90 mt-1">Online Learning Management System</p>
+            </div>
           </div>
+          {canAddKnowledge && (
+            <Button 
+              onClick={handleAddKnowledge} 
+              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Knowledge
+            </Button>
+          )}
         </div>
       </div>
 
