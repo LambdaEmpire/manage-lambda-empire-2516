@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Mail, Lock, User, Crown } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Crown, Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
@@ -305,6 +306,30 @@ export default function Login() {
                 </form>
               </TabsContent>
             </Tabs>
+          </CardContent>
+        </Card>
+
+        {/* Admin Access */}
+        <Card className="shadow-lg border-0 bg-gradient-to-r from-purple-500 to-blue-600 text-white">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Shield className="h-6 w-6" />
+                <div>
+                  <h3 className="font-semibold">Administrator?</h3>
+                  <p className="text-sm text-white/80">Access the admin portal</p>
+                </div>
+              </div>
+              <Link to="/admin-login">
+                <Button 
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                >
+                  Admin Login
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
 

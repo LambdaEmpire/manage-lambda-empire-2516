@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { RealtimeProvider } from '@/contexts/RealtimeContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Login from '@/pages/Login';
+import AdminLogin from '@/pages/AdminLogin';
 import SuperAdminSetup from '@/pages/SuperAdminSetup';
 import './App.css';
 
@@ -48,6 +49,7 @@ function App() {
         <Routes>
           {/* Authentication routes - outside of dashboard layout */}
           <Route path="/login" element={<Login />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/setup" element={<SuperAdminSetup />} />
           
           {/* Dashboard routes - inside dashboard layout */}
