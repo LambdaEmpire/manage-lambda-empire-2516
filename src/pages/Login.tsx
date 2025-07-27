@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Mail, Lock, User, Shield, Crown } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Crown } from 'lucide-react';
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
@@ -123,10 +123,6 @@ export default function Login() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleSuperAdminSetup = () => {
-    navigate('/setup');
   };
 
   return (
@@ -309,29 +305,6 @@ export default function Login() {
                 </form>
               </TabsContent>
             </Tabs>
-          </CardContent>
-        </Card>
-
-        {/* Super Admin Setup */}
-        <Card className="shadow-lg border-0 bg-gradient-to-r from-purple-500 to-blue-600 text-white">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Shield className="h-6 w-6" />
-                <div>
-                  <h3 className="font-semibold">First Time Setup?</h3>
-                  <p className="text-sm text-white/80">Set up the first super admin account</p>
-                </div>
-              </div>
-              <Button 
-                onClick={handleSuperAdminSetup}
-                variant="secondary"
-                size="sm"
-                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-              >
-                Setup
-              </Button>
-            </div>
           </CardContent>
         </Card>
 
