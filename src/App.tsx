@@ -18,6 +18,7 @@ import Fundraising from '@/pages/Fundraising';
 import Communications from '@/pages/Communications';
 import Recruitment from '@/pages/Recruitment';
 import MemberProfile from '@/pages/MemberProfile';
+import MemberDirectory from '@/pages/MemberDirectory';
 import AccomplishmentsManagement from '@/pages/AccomplishmentsManagement';
 import StatusManagement from '@/pages/StatusManagement';
 import PaymentCenter from '@/pages/PaymentCenter';
@@ -62,6 +63,7 @@ function App() {
           <Route path="fundraising" element={<Fundraising />} />
           <Route path="communications" element={<Communications />} />
           <Route path="recruitment" element={<Recruitment />} />
+          <Route path="member-directory" element={<MemberDirectory />} />
           <Route path="profile/:memberId" element={<MemberProfile />} />
         </Route>
       </Routes>
