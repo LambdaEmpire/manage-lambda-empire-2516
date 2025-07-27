@@ -30,7 +30,8 @@ import {
   Star, // For Member Point System
   ClipboardList, // For Quarterly Dues
   Calendar, // For Events
-  BookOpen // For Lambda Knowledge
+  BookOpen, // For Lambda Knowledge
+  Home // For Empire House
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -60,6 +61,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 const memberTitles = [
   { value: 'national_president', label: 'National President', level: 'national', priority: 1 },
@@ -83,7 +85,8 @@ const permissionCategories = [
       { key: 'profile', label: 'Profile Management', icon: UserCheck, description: 'Edit personal profile' },
       { key: 'events', label: 'Events', icon: Eye, description: 'View and register for events' },
       { key: 'serviceHours', label: 'Service Hours', icon: Eye, description: 'Log and view service hours' },
-      { key: 'lambdaKnowledge', label: 'Lambda Knowledge', icon: Eye, description: 'Access learning modules' }
+      { key: 'lambdaKnowledge', label: 'Lambda Knowledge', icon: Eye, description: 'Access learning modules' },
+      { key: 'empireHouse', label: 'Empire House', icon: Home, description: 'Access to Empire House page' }
     ]
   },
   {
@@ -137,7 +140,7 @@ const members = [
       total: 59
     },
     permissions: {
-      dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
+      dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true, empireHouse: true,
       recruitment: true, communications: true, memberManagement: false, adminTools: false, canApproveMembers: false, canApproveServiceHours: true,
       canManagePoints: false, canManageDues: false, canManageStatus: false, canManageEvents: false, canManageKnowledge: false,
       financialReports: false, nationalDues: false, fundraising: true, treasuryAccess: false
@@ -167,7 +170,7 @@ const members = [
       total: 76
     },
     permissions: {
-      dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
+      dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true, empireHouse: false,
       recruitment: true, communications: true, memberManagement: true, adminTools: false, canApproveMembers: true, canApproveServiceHours: true,
       canManagePoints: true, canManageDues: true, canManageStatus: true, canManageEvents: true, canManageKnowledge: true,
       financialReports: true, nationalDues: false, fundraising: true, treasuryAccess: false
@@ -197,7 +200,7 @@ const members = [
       total: 92
     },
     permissions: {
-      dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
+      dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true, empireHouse: true,
       recruitment: true, communications: true, memberManagement: true, adminTools: true, canApproveMembers: true, canApproveServiceHours: true,
       canManagePoints: true, canManageDues: true, canManageStatus: true, canManageEvents: true, canManageKnowledge: true,
       financialReports: true, nationalDues: true, fundraising: true, treasuryAccess: true
@@ -227,7 +230,7 @@ const members = [
       total: 84
     },
     permissions: {
-      dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true,
+      dashboard: true, profile: true, events: true, serviceHours: true, lambdaKnowledge: true, empireHouse: true,
       recruitment: true, communications: true, memberManagement: true, adminTools: true, canApproveMembers: true, canApproveServiceHours: true,
       canManagePoints: true, canManageDues: true, canManageStatus: true, canManageEvents: true, canManageKnowledge: true,
       financialReports: true, nationalDues: true, fundraising: true, treasuryAccess: true
@@ -246,6 +249,8 @@ export default function AdminMemberManagement() {
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
   const [isServiceHoursDialogOpen, setIsServiceHoursDialogOpen] = useState(false);
   const [restrictMemberView, setRestrictMemberView] = useState(false);
+  const [empireHouseVisible, setEmpireHouseVisible] = useState(true);
+  const { toast } = useToast();
 
   const filteredMembers = members.filter(member => {
     const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -289,25 +294,66 @@ export default function AdminMemberManagement() {
 
   const updateMemberPermissions = (memberId, permissionKey, value) => {
     console.log(`Updating ${memberId} permission ${permissionKey} to ${value}`);
+    toast({
+      title: "Permission Updated",
+      description: `${permissionKey} permission has been ${value ? 'enabled' : 'disabled'} for the member.`,
+    });
   };
 
   const updateMemberApproval = (memberId, status, reason = '') => {
     console.log(`Updating ${memberId} approval status to ${status}`, reason);
+    toast({
+      title: "Approval Status Updated",
+      description: `Member approval status has been changed to ${status}.`,
+    });
   };
 
   const toggleServiceHoursApproval = (memberId, enabled) => {
     console.log(`Toggling service hours approval for ${memberId}: ${enabled}`);
-    // This would typically update the backend
+    toast({
+      title: "Service Hours Permission Updated",
+      description: `Service hours approval permission has been ${enabled ? 'enabled' : 'disabled'}.`,
+    });
   };
 
   const approveServiceHours = (memberId, hours) => {
     console.log(`Approving ${hours} service hours for ${memberId}`);
-    // This would typically update the backend
+    toast({
+      title: "Service Hours Approved",
+      description: `${hours} service hours have been approved for the member.`,
+    });
   };
 
   const rejectServiceHours = (memberId, hours, reason) => {
     console.log(`Rejecting ${hours} service hours for ${memberId}:`, reason);
-    // This would typically update the backend
+    toast({
+      title: "Service Hours Rejected",
+      description: `${hours} service hours have been rejected.`,
+      variant: "destructive"
+    });
+  };
+
+  const toggleEmpireHouseVisibility = (visible) => {
+    setEmpireHouseVisible(visible);
+    toast({
+      title: "Empire House Visibility Updated",
+      description: `Empire House page is now ${visible ? 'visible' : 'hidden'} to members.`,
+    });
+    // Here you would typically update the backend/database
+    console.log(`Empire House visibility set to: ${visible}`);
+  };
+
+  const bulkUpdateEmpireHouseAccess = (enable) => {
+    // Update all members' Empire House permission
+    members.forEach(member => {
+      member.permissions.empireHouse = enable;
+    });
+    
+    toast({
+      title: "Bulk Update Complete",
+      description: `Empire House access has been ${enable ? 'enabled' : 'disabled'} for all members.`,
+    });
+    console.log(`Bulk updated Empire House access to: ${enable}`);
   };
 
   return (
@@ -327,6 +373,97 @@ export default function AdminMemberManagement() {
           </Button>
         </div>
       </div>
+
+      {/* Empire House Visibility Control */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Home className="h-5 w-5" />
+            Empire House Page Control
+          </CardTitle>
+          <CardDescription>Control the visibility and access to the Empire House page for all members</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Global Visibility Toggle */}
+            <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Home className="h-5 w-5 text-blue-600" />
+                <div>
+                  <h4 className="font-medium">Empire House Page Visibility</h4>
+                  <p className="text-sm text-gray-600">
+                    {empireHouseVisible 
+                      ? "Empire House page is currently visible to members with access permission" 
+                      : "Empire House page is currently hidden from all members"
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="empire-house-visibility" className="text-sm font-medium">
+                  {empireHouseVisible ? 'Visible' : 'Hidden'}
+                </Label>
+                <Switch
+                  id="empire-house-visibility"
+                  checked={empireHouseVisible}
+                  onCheckedChange={toggleEmpireHouseVisibility}
+                />
+              </div>
+            </div>
+
+            {/* Bulk Access Control */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <div>
+                <h4 className="font-medium">Bulk Empire House Access Control</h4>
+                <p className="text-sm text-gray-600">
+                  Quickly enable or disable Empire House access for all members
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  onClick={() => bulkUpdateEmpireHouseAccess(true)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Enable All
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => bulkUpdateEmpireHouseAccess(false)}
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <UserX className="h-4 w-4 mr-1" />
+                  Disable All
+                </Button>
+              </div>
+            </div>
+
+            {/* Status Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">
+                  {members.filter(m => m.permissions.empireHouse).length}
+                </div>
+                <p className="text-sm text-gray-600">Members with Access</p>
+              </div>
+              <div className="text-center p-4 bg-red-50 rounded-lg">
+                <div className="text-2xl font-bold text-red-600">
+                  {members.filter(m => !m.permissions.empireHouse).length}
+                </div>
+                <p className="text-sm text-gray-600">Members without Access</p>
+              </div>
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">
+                  {empireHouseVisible ? 'VISIBLE' : 'HIDDEN'}
+                </div>
+                <p className="text-sm text-gray-600">Page Status</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Enhanced Search and Filters */}
       <Card>
@@ -438,6 +575,12 @@ export default function AdminMemberManagement() {
                             {member.approvalStatus === 'pending' && <AlertTriangle className="h-3 w-3 mr-1" />}
                             {member.approvalStatus.charAt(0).toUpperCase() + member.approvalStatus.slice(1)}
                           </Badge>
+                          {member.permissions.empireHouse && empireHouseVisible && (
+                            <Badge className="bg-blue-100 text-blue-800">
+                              <Home className="h-3 w-3 mr-1" />
+                              Empire House
+                            </Badge>
+                          )}
                           {member.serviceHours.pending > 0 && (
                             <Badge className="bg-orange-100 text-orange-800">
                               <Clock className="h-3 w-3 mr-1" />
@@ -626,6 +769,7 @@ export default function AdminMemberManagement() {
                             const isEnabled = member.permissions[permission.key];
                             const isRestricted = member.approvalStatus !== 'approved' && 
                                                ['financialReports', 'nationalDues', 'treasuryAccess', 'adminTools'].includes(permission.key);
+                            const isEmpireHouseDisabled = permission.key === 'empireHouse' && !empireHouseVisible;
                             
                             return (
                               <div 
@@ -634,7 +778,7 @@ export default function AdminMemberManagement() {
                                   category.name === 'Financial' ? 'bg-yellow-50 border-yellow-200' :
                                   category.name === 'Administrative' ? 'bg-blue-50 border-blue-200' :
                                   'bg-gray-50 border-gray-200'
-                                } ${isRestricted ? 'opacity-50' : ''}`}
+                                } ${isRestricted || isEmpireHouseDisabled ? 'opacity-50' : ''}`}
                               >
                                 <div className="flex items-center gap-2">
                                   <IconComponent className={`h-4 w-4 ${
@@ -647,11 +791,14 @@ export default function AdminMemberManagement() {
                                     {isRestricted && (
                                       <p className="text-xs text-red-600">Requires approval</p>
                                     )}
+                                    {isEmpireHouseDisabled && (
+                                      <p className="text-xs text-red-600">Page is hidden</p>
+                                    )}
                                   </div>
                                 </div>
                                 <Switch 
-                                  checked={isEnabled && !isRestricted}
-                                  disabled={isRestricted}
+                                  checked={isEnabled && !isRestricted && !isEmpireHouseDisabled}
+                                  disabled={isRestricted || isEmpireHouseDisabled}
                                   onCheckedChange={(checked) => 
                                     updateMemberPermissions(member.id, permission.key, checked)
                                   }
@@ -882,17 +1029,22 @@ export default function AdminMemberManagement() {
                     <div className="space-y-3">
                       {category.permissions.map((permission) => {
                         const IconComponent = permission.icon;
+                        const isEmpireHouseDisabled = permission.key === 'empireHouse' && !empireHouseVisible;
                         return (
                           <div key={permission.key} className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <IconComponent className="h-4 w-4 text-gray-500" />
                               <div>
                                 <p className="text-sm font-medium">{permission.label}</p>
-                                <p className="text-xs text-gray-500">{permission.description}</p>
+                                <p className="text-xs text-gray-500">
+                                  {permission.description}
+                                  {isEmpireHouseDisabled && " (Page is currently hidden)"}
+                                </p>
                               </div>
                             </div>
                             <Switch 
-                              checked={selectedMember.permissions[permission.key]}
+                              checked={selectedMember.permissions[permission.key] && !isEmpireHouseDisabled}
+                              disabled={isEmpireHouseDisabled}
                               onCheckedChange={(checked) => 
                                 updateMemberPermissions(selectedMember.id, permission.key, checked)
                               }
