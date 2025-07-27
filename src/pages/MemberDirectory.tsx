@@ -57,7 +57,7 @@ const members = [
     region: 'Northeast',
     joinDate: '2020-03-15',
     status: 'Active',
-    orgAffiliation: 'Fraternity',
+    orgAffiliation: 'Lambda Phi Omega Fraternity, Inc.',
     city: 'New York',
     state: 'NY',
     bio: 'Passionate about community service and leadership development. Love hiking and photography.',
@@ -88,7 +88,7 @@ const members = [
     region: 'Southeast',
     joinDate: '2019-08-22',
     status: 'Active',
-    orgAffiliation: 'Sorority',
+    orgAffiliation: 'Lambda Xi Eta Sorority, Inc.',
     city: 'Atlanta',
     state: 'GA',
     bio: 'Regional coordinator with a passion for mentoring new members.',
@@ -119,7 +119,7 @@ const members = [
     region: 'Midwest',
     joinDate: '2018-01-10',
     status: 'Active',
-    orgAffiliation: 'Fraternity',
+    orgAffiliation: 'Lambda Phi Omega Fraternity, Inc.',
     city: 'Chicago',
     state: 'IL',
     bio: 'Financial expert dedicated to the fiscal health of Lambda Empire.',
@@ -150,7 +150,7 @@ const members = [
     region: 'West',
     joinDate: '2021-05-01',
     status: 'Active',
-    orgAffiliation: 'Sorority',
+    orgAffiliation: 'Lambda Xi Eta Sorority, Inc.',
     city: 'Los Angeles',
     state: 'CA',
     bio: 'National leader focused on expanding our reach and impact.',
@@ -376,8 +376,8 @@ export default function MemberDirectory() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Affiliations</SelectItem>
-                <SelectItem value="Fraternity">Fraternity</SelectItem>
-                <SelectItem value="Sorority">Sorority</SelectItem>
+                <SelectItem value="Lambda Xi Eta Sorority, Inc.">Lambda Xi Eta Sorority, Inc.</SelectItem>
+                <SelectItem value="Lambda Phi Omega Fraternity, Inc.">Lambda Phi Omega Fraternity, Inc.</SelectItem>
               </SelectContent>
             </Select>
           </div>
