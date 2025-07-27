@@ -57,7 +57,7 @@ const members = [
     region: 'Northeast',
     joinDate: '2020-03-15',
     status: 'Active',
-    genderAffiliation: 'Fraternity',
+    orgAffiliation: 'Fraternity',
     city: 'New York',
     state: 'NY',
     bio: 'Passionate about community service and leadership development. Love hiking and photography.',
@@ -88,7 +88,7 @@ const members = [
     region: 'Southeast',
     joinDate: '2019-08-22',
     status: 'Active',
-    genderAffiliation: 'Sorority',
+    orgAffiliation: 'Sorority',
     city: 'Atlanta',
     state: 'GA',
     bio: 'Regional coordinator with a passion for mentoring new members.',
@@ -119,7 +119,7 @@ const members = [
     region: 'Midwest',
     joinDate: '2018-01-10',
     status: 'Active',
-    genderAffiliation: 'Fraternity',
+    orgAffiliation: 'Fraternity',
     city: 'Chicago',
     state: 'IL',
     bio: 'Financial expert dedicated to the fiscal health of Lambda Empire.',
@@ -150,7 +150,7 @@ const members = [
     region: 'West',
     joinDate: '2021-05-01',
     status: 'Active',
-    genderAffiliation: 'Sorority',
+    orgAffiliation: 'Sorority',
     city: 'Los Angeles',
     state: 'CA',
     bio: 'National leader focused on expanding our reach and impact.',
@@ -191,7 +191,7 @@ export default function MemberDirectory() {
   const [selectedLevel, setSelectedLevel] = useState('all');
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [selectedChapter, setSelectedChapter] = useState('all');
-  const [selectedGenderAffiliation, setSelectedGenderAffiliation] = useState('all');
+  const [selectedOrgAffiliation, setSelectedOrgAffiliation] = useState('all');
   const [viewMode, setViewMode] = useState('grid'); // grid or list
   const [currentUser, setCurrentUser] = useState(members[0]); // Simulate logged-in user
   const [isPrivacyDialogOpen, setIsPrivacyDialogOpen] = useState(false);
@@ -218,9 +218,9 @@ export default function MemberDirectory() {
     const matchesLevel = selectedLevel === 'all' || member.level.toLowerCase() === selectedLevel;
     const matchesRegion = selectedRegion === 'all' || member.region === selectedRegion;
     const matchesChapter = selectedChapter === 'all' || member.chapter === selectedChapter;
-    const matchesGenderAffiliation = selectedGenderAffiliation === 'all' || member.genderAffiliation === selectedGenderAffiliation;
+    const matchesOrgAffiliation = selectedOrgAffiliation === 'all' || member.orgAffiliation === selectedOrgAffiliation;
     
-    return matchesSearch && matchesLevel && matchesRegion && matchesChapter && matchesGenderAffiliation;
+    return matchesSearch && matchesLevel && matchesRegion && matchesChapter && matchesOrgAffiliation;
   });
 
   // Check if current user can view a specific field based on privacy settings
@@ -370,9 +370,9 @@ export default function MemberDirectory() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={selectedGenderAffiliation} onValueChange={setSelectedGenderAffiliation}>
+            <Select value={selectedOrgAffiliation} onValueChange={setSelectedOrgAffiliation}>
               <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Affiliation" />
+                <SelectValue placeholder="Org Affiliation" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Affiliations</SelectItem>
@@ -412,7 +412,7 @@ export default function MemberDirectory() {
                         {member.status}
                       </Badge>
                       <Badge className="mt-1 text-xs" variant="outline">
-                        {member.genderAffiliation}
+                        {member.orgAffiliation}
                       </Badge>
                     </div>
                   </div>
