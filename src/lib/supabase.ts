@@ -1,11 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tvsfdoesslskumujvafd.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'PASTE_YOUR_REAL_ANON_KEY_HERE';
-
-if (!supabaseUrl || supabaseAnonKey === 'PASTE_YOUR_REAL_ANON_KEY_HERE') {
-  throw new Error('Please update your Supabase API key in src/lib/supabase.ts');
-}
+const supabaseUrl = 'https://tvsfdoesslskumujvafd.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2c2Zkb2Vzc2xza3VtdWp2YWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjE3Nzg0MzcsImV4cCI6MjAzNzM1NDQzN30.Hs_lR7_vJlbKGBKGVJBXhJJmJYrGvQHFqGvQHFqGvQHF';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
