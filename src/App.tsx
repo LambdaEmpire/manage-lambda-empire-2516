@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toaster';
+import { RealtimeProvider } from '@/contexts/RealtimeContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Login from '@/pages/Login';
 import SuperAdminSetup from '@/pages/SuperAdminSetup';
@@ -42,134 +43,136 @@ const LoadingSpinner = () => (
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Authentication routes - outside of dashboard layout */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/setup" element={<SuperAdminSetup />} />
-        
-        {/* Dashboard routes - inside dashboard layout */}
-        <Route path="/" element={
-          <SidebarProvider>
-            <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100">
-              <DashboardLayout />
-            </div>
-          </SidebarProvider>
-        }>
-          <Route index element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <MemberDashboard />
-            </Suspense>
-          } />
-          <Route path="member-dashboard" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <MemberDashboard />
-            </Suspense>
-          } />
-          <Route path="admin-dashboard" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminDashboard />
-            </Suspense>
-          } />
-          <Route path="admin/members" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminMemberManagement />
-            </Suspense>
-          } />
-          <Route path="admin/create-admin" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminCreation />
-            </Suspense>
-          } />
-          <Route path="admin/inbox-monitor" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminInboxMonitor />
-            </Suspense>
-          } />
-          <Route path="admin/accomplishments" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AccomplishmentsManagement />
-            </Suspense>
-          } />
-          <Route path="admin/status-management" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <StatusManagement />
-            </Suspense>
-          } />
-          <Route path="admin/payments" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminPaymentManagementPage />
-            </Suspense>
-          } />
-          <Route path="admin/points" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <MemberPointSystem />
-            </Suspense>
-          } />
-          <Route path="admin/dues" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <QuarterlyDuesManagement />
-            </Suspense>
-          } />
-          <Route path="payments" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <PaymentCenter />
-            </Suspense>
-          } />
-          <Route path="inbox" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <MemberInbox />
-            </Suspense>
-          } />
-          <Route path="empire-house" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <EmpireHouse />
-            </Suspense>
-          } />
-          <Route path="events" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <Events />
-            </Suspense>
-          } />
-          <Route path="lambda-knowledge" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <LambdaKnowledge />
-            </Suspense>
-          } />
-          <Route path="service-hours" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <ServiceHours />
-            </Suspense>
-          } />
-          <Route path="fundraising" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <Fundraising />
-            </Suspense>
-          } />
-          <Route path="communications" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <Communications />
-            </Suspense>
-          } />
-          <Route path="recruitment" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <Recruitment />
-            </Suspense>
-          } />
-          <Route path="member-directory" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <MemberDirectory />
-            </Suspense>
-          } />
-          <Route path="profile/:memberId" element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <MemberProfile />
-            </Suspense>
-          } />
-        </Route>
-      </Routes>
-      <Toaster />
-    </Router>
+    <RealtimeProvider>
+      <Router>
+        <Routes>
+          {/* Authentication routes - outside of dashboard layout */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/setup" element={<SuperAdminSetup />} />
+          
+          {/* Dashboard routes - inside dashboard layout */}
+          <Route path="/" element={
+            <SidebarProvider>
+              <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100">
+                <DashboardLayout />
+              </div>
+            </SidebarProvider>
+          }>
+            <Route index element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <MemberDashboard />
+              </Suspense>
+            } />
+            <Route path="member-dashboard" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <MemberDashboard />
+              </Suspense>
+            } />
+            <Route path="admin-dashboard" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminDashboard />
+              </Suspense>
+            } />
+            <Route path="admin/members" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminMemberManagement />
+              </Suspense>
+            } />
+            <Route path="admin/create-admin" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminCreation />
+              </Suspense>
+            } />
+            <Route path="admin/inbox-monitor" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminInboxMonitor />
+              </Suspense>
+            } />
+            <Route path="admin/accomplishments" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <AccomplishmentsManagement />
+              </Suspense>
+            } />
+            <Route path="admin/status-management" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <StatusManagement />
+              </Suspense>
+            } />
+            <Route path="admin/payments" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminPaymentManagementPage />
+              </Suspense>
+            } />
+            <Route path="admin/points" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <MemberPointSystem />
+              </Suspense>
+            } />
+            <Route path="admin/dues" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <QuarterlyDuesManagement />
+              </Suspense>
+            } />
+            <Route path="payments" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <PaymentCenter />
+              </Suspense>
+            } />
+            <Route path="inbox" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <MemberInbox />
+              </Suspense>
+            } />
+            <Route path="empire-house" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <EmpireHouse />
+              </Suspense>
+            } />
+            <Route path="events" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <Events />
+              </Suspense>
+            } />
+            <Route path="lambda-knowledge" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <LambdaKnowledge />
+              </Suspense>
+            } />
+            <Route path="service-hours" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <ServiceHours />
+              </Suspense>
+            } />
+            <Route path="fundraising" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <Fundraising />
+              </Suspense>
+            } />
+            <Route path="communications" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <Communications />
+              </Suspense>
+            } />
+            <Route path="recruitment" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <Recruitment />
+              </Suspense>
+            } />
+            <Route path="member-directory" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <MemberDirectory />
+              </Suspense>
+            } />
+            <Route path="profile/:memberId" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <MemberProfile />
+              </Suspense>
+            } />
+          </Route>
+        </Routes>
+        <Toaster />
+      </Router>
+    </RealtimeProvider>
   );
 }
 

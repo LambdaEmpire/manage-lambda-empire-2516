@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Bell, Settings, LogOut, User, Crown, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import RealtimeStatus from '../RealtimeStatus';
 
 interface User {
   id: string;
@@ -62,6 +63,7 @@ export default function Header({ user, profile, onLogout }: HeaderProps) {
           <h1 className="text-xl font-semibold text-gray-900">
             Lambda Empire Management
           </h1>
+          <RealtimeStatus />
         </div>
 
         <div className="flex items-center space-x-4">
