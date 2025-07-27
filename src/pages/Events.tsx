@@ -1,18 +1,66 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, MapPin, Users, Ticket } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Calendar, MapPin, Users, Ticket, Plus, Clock, DollarSign } from 'lucide-react';
 
 export default function Events() {
+  const [isCreateEventDialogOpen, setIsCreateEventDialogOpen] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    description: '',
+    date: '',
+    time: '',
+    location: '',
+    price: '',
+    capacity: '',
+    category: 'meeting'
+  });
+
+  const createEvent = () => {
+    if (!newEvent.title || !newEvent.date || !newEvent.location) {
+      alert('Please fill in all required fields.');
+      return;
+    }
+    
+    console.log('Creating event:', newEvent);
+    // In a real app, this would send data to backend
+    
+    setIsCreateEventDialogOpen(false);
+    setNewEvent({
+      title: '',
+      description: '',
+      date: '',
+      time: '',
+      location: '',
+      price: '',
+      capacity: '',
+      category: 'meeting'
+    });
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 rounded-xl text-white">
-        <div className="flex items-center gap-4">
-          <Calendar className="h-12 w-12" />
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Events</h1>
-            <p className="text-white/90 mt-1">Lambda Empire conferences, meetings, and activities</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Calendar className="h-12 w-12" />
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">Events</h1>
+              <p className="text-white/90 mt-1">Lambda Empire conferences, meetings, and activities</p>
+            </div>
           </div>
+          <Button
+            onClick={() => setIsCreateEventDialogOpen(true)}
+            className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Event
+          </Button>
         </div>
       </div>
 
@@ -196,6 +244,116 @@ export default function Events() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Create Event Dialog */}
+      <Dialog open={isCreateEventDialogOpen} onOpenChange={setIsCreateEventDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Event</DialogTitle>
+            <DialogDescription>
+              Create a new Lambda Empire event for members to register
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="eventTitle">Event Title *</Label>
+              <Input
+                id="eventTitle"
+                placeholder="e.g., Monthly Chapter Meeting"
+                value={newEvent.title}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, title: e.target.value }))}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="eventDescription">Description</Label>
+              <Textarea
+                id="eventDescription"
+                placeholder="Describe the event, agenda, and what members can expect..."
+                value={newEvent.description}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="eventDate">Date *</Label>
+                <Input
+                  id="eventDate"
+                  type="date"
+                  value={newEvent.date}
+                  onChange={(e) => setNewEvent(prev => ({ ...prev, date: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="eventTime">Time</Label>
+                <Input
+                  id="eventTime"
+                  type="time"
+                  value={newEvent.time}
+                  onChange={(e) => setNewEvent(prev => ({ ...prev, time: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="eventLocation">Location *</Label>
+              <Input
+                id="eventLocation"
+                placeholder="e.g., Community Center, 123 Main St"
+                value={newEvent.location}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, location: e.target.value }))}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="eventPrice">Price (optional)</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="eventPrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={newEvent.price}
+                    onChange={(e) => setNewEvent(prev => ({ ...prev, price: e.target.value }))}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="eventCapacity">Capacity (optional)</Label>
+                <div className="relative">
+                  <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="eventCapacity"
+                    type="number"
+                    min="1"
+                    placeholder="Unlimited"
+                    value={newEvent.capacity}
+                    onChange={(e) => setNewEvent(prev => ({ ...prev, capacity: e.target.value }))}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateEventDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={createEvent}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Event
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

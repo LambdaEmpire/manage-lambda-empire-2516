@@ -8,10 +8,10 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
+import { Switch } from '../components/ui/switch';
 import { useToast } from '../hooks/use-toast';
 import MemberAccomplishments from '../components/MemberAccomplishments';
 import { User, Mail, Phone, MapPin, Calendar, Edit, Save, X } from 'lucide-react';
-import { Switch } from '../components/ui/switch'; // Import Switch component
 
 interface UserProfile {
   id: string;
@@ -26,7 +26,7 @@ interface UserProfile {
   joined_date?: string;
   avatar_url?: string;
   can_approve_members?: boolean;
-  visibility_settings?: { // New field for visibility
+  visibility_settings?: {
     phone?: boolean;
     location?: boolean;
     bio?: boolean;
@@ -96,7 +96,7 @@ const MemberProfile = () => {
         joined_date: userData.user.created_at,
         avatar_url: profileData?.avatar_url || userData.user.user_metadata?.avatar_url || '',
         can_approve_members: profileData?.can_approve_members || false,
-        visibility_settings: profileData?.visibility_settings || { // Default visibility settings
+        visibility_settings: profileData?.visibility_settings || {
           phone: true,
           location: true,
           bio: true,
@@ -137,7 +137,7 @@ const MemberProfile = () => {
           state: editForm.state,
           avatar_url: editForm.avatar_url,
           can_approve_members: editForm.can_approve_members,
-          visibility_settings: editForm.visibility_settings // Save visibility settings
+          visibility_settings: editForm.visibility_settings
         });
 
       if (error) {
@@ -174,7 +174,7 @@ const MemberProfile = () => {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 animate-fade-in">
         <div className="animate-pulse space-y-6">
           <div className="flex items-center space-x-4">
             <div className="w-24 h-24 bg-gray-200 rounded-full"></div>
@@ -198,7 +198,7 @@ const MemberProfile = () => {
 
   if (!profile) {
     return (
-      <div className="p-6">
+      <div className="p-6 animate-fade-in">
         <Card>
           <CardContent className="p-6 text-center">
             <p className="text-gray-500">Member profile not found</p>
@@ -209,7 +209,7 @@ const MemberProfile = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 animate-fade-in">
       {/* Profile Header */}
       <Card>
         <CardContent className="p-6">

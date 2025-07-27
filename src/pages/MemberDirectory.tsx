@@ -25,7 +25,8 @@ import {
   UserCheck,
   Building,
   GraduationCap,
-  Heart
+  Heart,
+  Trophy
 } from 'lucide-react';
 import {
   Select,
