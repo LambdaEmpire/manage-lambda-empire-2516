@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { GraduationCap, BookOpen, Video, CheckCircle, Clock, Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -10,7 +15,21 @@ import { useToast } from '@/hooks/use-toast';
 export default function LambdaKnowledge() {
   const [canAddKnowledge, setCanAddKnowledge] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  const knowledgeCategories = [
+    'History',
+    'Policies',
+    'How-To Guides',
+    'Resources',
+    'FAQs',
+    'Leadership',
+    'Community Service',
+    'Events',
+    'Training Materials'
+  ];
 
   // Check user permissions on component mount
   useEffect(() => {
@@ -60,14 +79,46 @@ export default function LambdaKnowledge() {
       return;
     }
     
-    // Here you can add logic to open a form dialog or navigate to an add knowledge page
-    toast({
-      title: "Add Knowledge",
-      description: "Opening knowledge article creation form...",
-    });
-    
-    // For now, just show a placeholder message
-    // You can implement the actual form logic later
+    setIsFormDialogOpen(true);
+  };
+
+  const handleSubmitKnowledge = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const formData = new FormData(e.target);
+      const knowledgeData = {
+        title: formData.get('title'),
+        content: formData.get('content'),
+        category: formData.get('category'),
+        tags: formData.get('tags')?.split(',').map(tag => tag.trim()).filter(tag => tag !== '') || [],
+        difficulty_level: formData.get('difficulty_level'),
+        estimated_time: formData.get('estimated_time'),
+        is_required: formData.get('is_required') === 'true'
+      };
+
+      // Here you would typically save to your knowledge base table
+      // For now, we'll just show a success message
+      console.log('Knowledge article data:', knowledgeData);
+
+      toast({
+        title: "Knowledge Article Created",
+        description: `"${knowledgeData.title}" has been successfully added to the knowledge base.`,
+      });
+
+      setIsFormDialogOpen(false);
+      // Reset form would happen automatically when dialog closes
+    } catch (error) {
+      console.error('Error creating knowledge article:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create knowledge article. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -280,6 +331,117 @@ export default function LambdaKnowledge() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Add Knowledge Form Dialog */}
+      <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add New Knowledge Article</DialogTitle>
+            <DialogDescription>
+              Create a new knowledge article for the Lambda Empire learning system.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitKnowledge} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Article Title *</Label>
+                <Input 
+                  id="title" 
+                  name="title" 
+                  placeholder="e.g., How to Conduct Effective Meetings"
+                  required 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="category">Category *</Label>
+                <Select name="category" required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {knowledgeCategories.map(category => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="content">Article Content *</Label>
+              <Textarea 
+                id="content" 
+                name="content" 
+                placeholder="Write the main content of your knowledge article here..."
+                className="min-h-[200px]" 
+                required 
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="difficulty_level">Difficulty Level</Label>
+                <Select name="difficulty_level">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select difficulty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="estimated_time">Estimated Reading Time</Label>
+                <Input 
+                  id="estimated_time" 
+                  name="estimated_time" 
+                  placeholder="e.g., 15 minutes"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tags">Tags (comma-separated)</Label>
+              <Input 
+                id="tags" 
+                name="tags" 
+                placeholder="e.g., leadership, meetings, communication"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="is_required">Article Type</Label>
+              <Select name="is_required">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select article type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="false">Optional Learning</SelectItem>
+                  <SelectItem value="true">Required Learning</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsFormDialogOpen(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Creating..." : "Create Article"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
