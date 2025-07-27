@@ -80,30 +80,78 @@ export default function SuperAdminSetup() {
     }
 
     try {
-      // Create the super admin user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Create the super admin user with email confirmation disabled for first admin
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: setupForm.email,
         password: setupForm.password,
-        options: {
-          data: {
-            first_name: setupForm.firstName,
-            last_name: setupForm.lastName,
-            phone: setupForm.phone,
-            organization: setupForm.organization,
-            is_super_admin: true
-          }
+        email_confirm: true, // Auto-confirm email for first super admin
+        user_metadata: {
+          first_name: setupForm.firstName,
+          last_name: setupForm.lastName,
+          phone: setupForm.phone,
+          organization: setupForm.organization,
+          is_super_admin: true,
+          can_approve_members: true
         }
       });
 
       if (authError) {
-        throw authError;
+        // If admin.createUser fails, fall back to regular signup
+        console.log('Admin create failed, trying regular signup:', authError);
+        
+        const { data: fallbackData, error: fallbackError } = await supabase.auth.signUp({
+          email: setupForm.email,
+          password: setupForm.password,
+          options: {
+            data: {
+              first_name: setupForm.firstName,
+              last_name: setupForm.lastName,
+              phone: setupForm.phone,
+              organization: setupForm.organization,
+              is_super_admin: true,
+              can_approve_members: true
+            }
+          }
+        });
+
+        if (fallbackError) {
+          throw fallbackError;
+        }
+
+        if (fallbackData.user) {
+          // Create profile with admin privileges
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: fallbackData.user.id,
+              first_name: setupForm.firstName,
+              last_name: setupForm.lastName,
+              phone: setupForm.phone,
+              organization: setupForm.organization,
+              can_approve_members: true,
+              is_super_admin: true,
+              created_at: new Date().toISOString()
+            });
+
+          if (profileError) {
+            console.error('Profile creation error:', profileError);
+          }
+
+          toast({
+            title: "Super Admin Created!",
+            description: "Your super admin account has been set up successfully. Please check your email to verify your account, then you can log in.",
+          });
+
+          navigate('/login');
+          return;
+        }
       }
 
       if (authData.user) {
-        // Create profile with admin privileges
+        // Create profile with admin privileges for admin-created user
         const { error: profileError } = await supabase
           .from('profiles')
-          .insert({
+          .upsert({
             id: authData.user.id,
             first_name: setupForm.firstName,
             last_name: setupForm.lastName,
@@ -116,16 +164,28 @@ export default function SuperAdminSetup() {
 
         if (profileError) {
           console.error('Profile creation error:', profileError);
-          // Don't throw here as the user was created successfully
         }
 
-        toast({
-          title: "Super Admin Created!",
-          description: "Your super admin account has been set up successfully. Please check your email to verify your account.",
+        // Automatically sign in the super admin
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: setupForm.email,
+          password: setupForm.password,
         });
 
-        // Redirect to login
-        navigate('/login');
+        if (signInError) {
+          console.error('Auto sign-in error:', signInError);
+          toast({
+            title: "Super Admin Created!",
+            description: "Your super admin account has been set up successfully. Please log in to continue.",
+          });
+          navigate('/login');
+        } else {
+          toast({
+            title: "Welcome, Super Admin!",
+            description: "Your account has been created and you are now logged in with full administrative privileges.",
+          });
+          navigate('/');
+        }
       }
     } catch (error: any) {
       console.error('Setup error:', error);
@@ -171,7 +231,7 @@ export default function SuperAdminSetup() {
               First Time Setup
             </CardTitle>
             <CardDescription className="text-center">
-              This account will have full administrative privileges
+              This account will have full administrative privileges and immediate access
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -180,6 +240,14 @@ export default function SuperAdminSetup() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+
+            {/* Info Alert */}
+            <Alert className="mb-4 border-blue-200 bg-blue-50">
+              <Shield className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                <strong>First Super Admin:</strong> Your account will be automatically approved with full system access. No email verification required.
+              </AlertDescription>
+            </Alert>
 
             <form onSubmit={handleSetup} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -307,7 +375,7 @@ export default function SuperAdminSetup() {
                   className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" 
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Creating Super Admin...' : 'Create Super Admin Account'}
+                  {isLoading ? 'Creating Super Admin...' : 'Create Super Admin & Login'}
                 </Button>
               </div>
             </form>

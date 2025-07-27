@@ -36,6 +36,15 @@ CREATE POLICY "Users can update own profile" ON public.profiles
 CREATE POLICY "Users can insert own profile" ON public.profiles
     FOR INSERT WITH CHECK (auth.uid() = id);
 
+-- Super admins can do everything
+CREATE POLICY "Super admins can do everything" ON public.profiles
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles 
+            WHERE id = auth.uid() AND is_super_admin = true
+        )
+    );
+
 -- Create function to handle new user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -81,3 +90,25 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER update_profiles_updated_at
     BEFORE UPDATE ON public.profiles
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Create function to check if user is super admin
+CREATE OR REPLACE FUNCTION public.is_super_admin(user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE id = user_id AND is_super_admin = true
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create function to check if user can approve members
+CREATE OR REPLACE FUNCTION public.can_approve_members(user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE id = user_id AND (can_approve_members = true OR is_super_admin = true)
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
