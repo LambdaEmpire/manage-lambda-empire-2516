@@ -343,19 +343,6 @@ export default function AdminMemberManagement() {
     console.log(`Empire House visibility set to: ${visible}`);
   };
 
-  const bulkUpdateEmpireHouseAccess = (enable) => {
-    // Update all members' Empire House permission
-    members.forEach(member => {
-      member.permissions.empireHouse = enable;
-    });
-    
-    toast({
-      title: "Bulk Update Complete",
-      description: `Empire House access has been ${enable ? 'enabled' : 'disabled'} for all members.`,
-    });
-    console.log(`Bulk updated Empire House access to: ${enable}`);
-  };
-
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="bg-gradient-to-r from-lambda-gold to-orange-500 p-6 rounded-xl text-white">
@@ -373,97 +360,6 @@ export default function AdminMemberManagement() {
           </Button>
         </div>
       </div>
-
-      {/* Empire House Visibility Control */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Home className="h-5 w-5" />
-            Empire House Page Control
-          </CardTitle>
-          <CardDescription>Control the visibility and access to the Empire House page for all members</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {/* Global Visibility Toggle */}
-            <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Home className="h-5 w-5 text-blue-600" />
-                <div>
-                  <h4 className="font-medium">Empire House Page Visibility</h4>
-                  <p className="text-sm text-gray-600">
-                    {empireHouseVisible 
-                      ? "Empire House page is currently visible to members with access permission" 
-                      : "Empire House page is currently hidden from all members"
-                    }
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="empire-house-visibility" className="text-sm font-medium">
-                  {empireHouseVisible ? 'Visible' : 'Hidden'}
-                </Label>
-                <Switch
-                  id="empire-house-visibility"
-                  checked={empireHouseVisible}
-                  onCheckedChange={toggleEmpireHouseVisibility}
-                />
-              </div>
-            </div>
-
-            {/* Bulk Access Control */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <div>
-                <h4 className="font-medium">Bulk Empire House Access Control</h4>
-                <p className="text-sm text-gray-600">
-                  Quickly enable or disable Empire House access for all members
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  size="sm" 
-                  onClick={() => bulkUpdateEmpireHouseAccess(true)}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle className="h-4 w-4 mr-1" />
-                  Enable All
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => bulkUpdateEmpireHouseAccess(false)}
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                >
-                  <UserX className="h-4 w-4 mr-1" />
-                  Disable All
-                </Button>
-              </div>
-            </div>
-
-            {/* Status Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
-                  {members.filter(m => m.permissions.empireHouse).length}
-                </div>
-                <p className="text-sm text-gray-600">Members with Access</p>
-              </div>
-              <div className="text-center p-4 bg-red-50 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">
-                  {members.filter(m => !m.permissions.empireHouse).length}
-                </div>
-                <p className="text-sm text-gray-600">Members without Access</p>
-              </div>
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">
-                  {empireHouseVisible ? 'VISIBLE' : 'HIDDEN'}
-                </div>
-                <p className="text-sm text-gray-600">Page Status</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Enhanced Search and Filters */}
       <Card>
@@ -526,13 +422,30 @@ export default function AdminMemberManagement() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center space-x-2 mt-4">
-            <Switch
-              id="restrict-member-view"
-              checked={restrictMemberView}
-              onCheckedChange={setRestrictMemberView}
-            />
-            <Label htmlFor="restrict-member-view">Restrict Member View (based on admin's level and affiliation)</Label>
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="restrict-member-view"
+                checked={restrictMemberView}
+                onCheckedChange={setRestrictMemberView}
+              />
+              <Label htmlFor="restrict-member-view">Restrict Member View (based on admin's level and affiliation)</Label>
+            </div>
+            {/* Empire House Toggle */}
+            <div className="flex items-center space-x-2">
+              <Home className="h-4 w-4 text-blue-600" />
+              <Label htmlFor="empire-house-toggle" className="text-sm font-medium">
+                Empire House Page
+              </Label>
+              <Switch
+                id="empire-house-toggle"
+                checked={empireHouseVisible}
+                onCheckedChange={toggleEmpireHouseVisibility}
+              />
+              <span className="text-sm text-gray-600">
+                {empireHouseVisible ? 'Visible' : 'Hidden'}
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>
