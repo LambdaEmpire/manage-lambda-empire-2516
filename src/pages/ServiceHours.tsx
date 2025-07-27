@@ -1,9 +1,69 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, Plus, Calendar, MapPin } from 'lucide-react';
+import { Clock, Plus, Calendar, MapPin, Upload, FileText, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function ServiceHours() {
+  const [isLogHoursDialogOpen, setIsLogHoursDialogOpen] = useState(false);
+  const [newHoursEntry, setNewHoursEntry] = useState({
+    activity: '',
+    date: '',
+    hours: '',
+    location: '',
+    description: '',
+    category: '',
+    proof: null, // For file upload
+  });
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [submitStatus, setSubmitStatus] = useState({ success: false, error: '' });
+
+  const serviceCategories = [
+    'Education & Mentorship', 'Community Service', 'Food & Hunger Relief', 
+    'Environmental', 'Healthcare', 'Animal Welfare', 'Other'
+  ];
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setNewHoursEntry(prev => ({ ...prev, proof: file }));
+      setUploadedFileName(file.name);
+    } else {
+      setNewHoursEntry(prev => ({ ...prev, proof: null }));
+      setUploadedFileName('');
+    }
+  };
+
+  const handleLogHoursSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitStatus({ success: false, error: '' });
+
+    if (!newHoursEntry.activity || !newHoursEntry.date || !newHoursEntry.hours || !newHoursEntry.location || !newHoursEntry.category) {
+      setSubmitStatus({ success: false, error: 'Please fill in all required fields.' });
+      return;
+    }
+
+    console.log('Logging service hours:', newHoursEntry);
+    // Simulate API call for logging hours and uploading proof
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setSubmitStatus({ success: true, error: '' });
+      setNewHoursEntry({
+        activity: '', date: '', hours: '', location: '', description: '', category: '', proof: null,
+      });
+      setUploadedFileName('');
+      setIsLogHoursDialogOpen(false);
+    } catch (error) {
+      setSubmitStatus({ success: false, error: 'Failed to log hours. Please try again.' });
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="bg-gradient-to-r from-orange-500 to-red-500 p-6 rounded-xl text-white">
@@ -15,7 +75,7 @@ export default function ServiceHours() {
               <p className="text-white/90 mt-1">Track your community service contributions</p>
             </div>
           </div>
-          <Button className="bg-white/20 hover:bg-white/30 text-white border-white/30">
+          <Button onClick={() => setIsLogHoursDialogOpen(true)} className="bg-white/20 hover:bg-white/30 text-white border-white/30">
             <Plus className="h-4 w-4 mr-2" />
             Log Hours
           </Button>
@@ -73,7 +133,7 @@ export default function ServiceHours() {
               <CardTitle>Recent Service Activities</CardTitle>
               <CardDescription>Your latest community service contributions</CardDescription>
             </div>
-            <Button>
+            <Button onClick={() => setIsLogHoursDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Log New Hours
             </Button>
@@ -217,6 +277,131 @@ export default function ServiceHours() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Log Hours Dialog */}
+      <Dialog open={isLogHoursDialogOpen} onOpenChange={setIsLogHoursDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Log New Service Hours</DialogTitle>
+            <DialogDescription>
+              Enter details of your service activity and provide proof.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleLogHoursSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="activity">Activity Name *</Label>
+                <Input 
+                  id="activity" 
+                  value={newHoursEntry.activity} 
+                  onChange={(e) => setNewHoursEntry(prev => ({ ...prev, activity: e.target.value }))} 
+                  required 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="category">Category *</Label>
+                <Select 
+                  value={newHoursEntry.category} 
+                  onValueChange={(value) => setNewHoursEntry(prev => ({ ...prev, category: value }))} 
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {serviceCategories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="date">Date *</Label>
+                <Input 
+                  id="date" 
+                  type="date" 
+                  value={newHoursEntry.date} 
+                  onChange={(e) => setNewHoursEntry(prev => ({ ...prev, date: e.target.value }))} 
+                  required 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hours">Hours *</Label>
+                <Input 
+                  id="hours" 
+                  type="number" 
+                  step="0.5" 
+                  min="0.5" 
+                  value={newHoursEntry.hours} 
+                  onChange={(e) => setNewHoursEntry(prev => ({ ...prev, hours: parseFloat(e.target.value) }))} 
+                  required 
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="location">Location *</Label>
+              <Input 
+                id="location" 
+                value={newHoursEntry.location} 
+                onChange={(e) => setNewHoursEntry(prev => ({ ...prev, location: e.target.value }))} 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea 
+                id="description" 
+                value={newHoursEntry.description} 
+                onChange={(e) => setNewHoursEntry(prev => ({ ...prev, description: e.target.value }))} 
+                className="min-h-[100px]" 
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="proof">Proof of Service (Optional)</Label>
+              <div className="flex items-center space-x-2">
+                <Input 
+                  id="proof" 
+                  type="file" 
+                  onChange={handleFileChange} 
+                  className="flex-1" 
+                  accept=".pdf,.jpg,.jpeg,.png"
+                />
+                {uploadedFileName && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    <FileText className="h-3 w-3" /> {uploadedFileName}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">Accepted formats: PDF, JPG, PNG</p>
+            </div>
+
+            {submitStatus.error && (
+              <Alert className="border-red-200 bg-red-50">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-700">
+                  {submitStatus.error}
+                </AlertDescription>
+              </Alert>
+            )}
+            {submitStatus.success && (
+              <Alert className="border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-700">
+                  Service hours logged successfully!
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsLogHoursDialogOpen(false)}>Cancel</Button>
+              <Button type="submit">Log Hours</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
