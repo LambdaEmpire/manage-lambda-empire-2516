@@ -15,6 +15,7 @@ const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const AdminCreation = lazy(() => import('@/pages/AdminCreation'));
 const AdminMemberManagement = lazy(() => import('@/pages/AdminMemberManagement'));
 const AdminInboxMonitor = lazy(() => import('@/pages/AdminInboxMonitor'));
+const AdminSquareIntegration = lazy(() => import('@/pages/AdminSquareIntegration'));
 const MemberInbox = lazy(() => import('@/pages/MemberInbox'));
 const EmpireHouse = lazy(() => import('@/pages/EmpireHouse'));
 const Events = lazy(() => import('@/pages/Events'));
@@ -31,6 +32,7 @@ const PaymentCenter = lazy(() => import('@/pages/PaymentCenter'));
 const AdminPaymentManagementPage = lazy(() => import('@/pages/AdminPaymentManagement'));
 const MemberPointSystem = lazy(() => import('@/components/MemberPointSystem'));
 const QuarterlyDuesManagement = lazy(() => import('@/components/QuarterlyDuesManagement'));
+const NotificationSystem = lazy(() => import('@/components/NotificationSystem'));
 
 // Loading component
 const LoadingSpinner = () => (
@@ -105,6 +107,11 @@ function App() {
                 <AdminPaymentManagementPage />
               </Suspense>
             } />
+            <Route path="admin/square-integration" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminSquareIntegration />
+              </Suspense>
+            } />
             <Route path="admin/points" element={
               <Suspense fallback={<LoadingSpinner />}>
                 <MemberPointSystem />
@@ -118,6 +125,11 @@ function App() {
             <Route path="payments" element={
               <Suspense fallback={<LoadingSpinner />}>
                 <PaymentCenter />
+              </Suspense>
+            } />
+            <Route path="notifications" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <NotificationSystem />
               </Suspense>
             } />
             <Route path="inbox" element={

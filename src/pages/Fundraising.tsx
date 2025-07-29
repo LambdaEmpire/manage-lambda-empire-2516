@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 import { 
   Target, 
   DollarSign, 
@@ -28,10 +29,15 @@ import {
   AlertTriangle,
   BarChart3,
   Settings,
-  ExternalLink
+  ExternalLink,
+  Trash2,
+  Star,
+  Crown,
+  Medal,
+  Trophy
 } from 'lucide-react';
 
-// Mock fundraising campaigns data
+// Mock fundraising campaigns data with enhanced donor awards
 const campaigns = [
   {
     id: 'CAMP001',
@@ -48,11 +54,46 @@ const campaigns = [
     organizer: 'National Board',
     featured: true,
     rewards: [
-      { amount: 25, reward: 'Thank you email and digital certificate' },
-      { amount: 100, reward: 'Lambda Empire sticker pack' },
-      { amount: 250, reward: 'Official Lambda Empire t-shirt' },
-      { amount: 500, reward: 'Invitation to exclusive donor appreciation event' }
-    ]
+      { 
+        id: 1,
+        amount: 25, 
+        reward: 'Thank you email and digital certificate',
+        icon: 'star',
+        color: 'bronze',
+        description: 'Recognition as a supporter with personalized thank you message'
+      },
+      { 
+        id: 2,
+        amount: 100, 
+        reward: 'Lambda Empire sticker pack + Digital Badge',
+        icon: 'medal',
+        color: 'silver',
+        description: 'Physical sticker pack and digital supporter badge for social media'
+      },
+      { 
+        id: 3,
+        amount: 250, 
+        reward: 'Official Lambda Empire t-shirt + All previous rewards',
+        icon: 'trophy',
+        color: 'gold',
+        description: 'Exclusive Lambda Empire merchandise and recognition'
+      },
+      { 
+        id: 4,
+        amount: 500, 
+        reward: 'VIP Donor Status + Exclusive event invitation',
+        icon: 'crown',
+        color: 'platinum',
+        description: 'VIP recognition and invitation to exclusive donor appreciation events'
+      }
+    ],
+    donorLevels: {
+      bronze: { min: 25, max: 99, title: 'Bronze Supporter', count: 45 },
+      silver: { min: 100, max: 249, title: 'Silver Patron', count: 32 },
+      gold: { min: 250, max: 499, title: 'Gold Benefactor', count: 28 },
+      platinum: { min: 500, max: 999, title: 'Platinum Champion', count: 15 },
+      diamond: { min: 1000, max: Infinity, title: 'Diamond Elite', count: 7 }
+    }
   },
   {
     id: 'CAMP002',
@@ -69,30 +110,36 @@ const campaigns = [
     organizer: 'Alpha Chapter',
     featured: false,
     rewards: [
-      { amount: 50, reward: 'Recognition on chapter website' },
-      { amount: 150, reward: 'Lambda Empire water bottle' },
-      { amount: 300, reward: 'Volunteer appreciation dinner invitation' }
-    ]
-  },
-  {
-    id: 'CAMP003',
-    title: 'Annual Convention Sponsorship',
-    description: 'Help sponsor our annual national convention and networking event.',
-    goal: 25000,
-    raised: 25000,
-    donors: 89,
-    startDate: '2023-11-01',
-    endDate: '2024-01-31',
-    status: 'completed',
-    category: 'events',
-    image: '/api/placeholder/400/200',
-    organizer: 'National Board',
-    featured: false,
-    rewards: [
-      { amount: 100, reward: 'Convention program recognition' },
-      { amount: 500, reward: 'VIP reception invitation' },
-      { amount: 1000, reward: 'Sponsor booth at convention' }
-    ]
+      { 
+        id: 1,
+        amount: 50, 
+        reward: 'Recognition on chapter website',
+        icon: 'star',
+        color: 'bronze',
+        description: 'Your name featured on our community service page'
+      },
+      { 
+        id: 2,
+        amount: 150, 
+        reward: 'Lambda Empire water bottle + Website recognition',
+        icon: 'medal',
+        color: 'silver',
+        description: 'Eco-friendly water bottle with Lambda Empire logo'
+      },
+      { 
+        id: 3,
+        amount: 300, 
+        reward: 'Volunteer appreciation dinner invitation',
+        icon: 'trophy',
+        color: 'gold',
+        description: 'Exclusive dinner with chapter leadership and volunteers'
+      }
+    ],
+    donorLevels: {
+      bronze: { min: 50, max: 149, title: 'Community Supporter', count: 20 },
+      silver: { min: 150, max: 299, title: 'Service Patron', count: 15 },
+      gold: { min: 300, max: Infinity, title: 'Service Champion', count: 10 }
+    }
   }
 ];
 
@@ -104,7 +151,8 @@ const donationHistory = [
     amount: 100,
     date: '2024-01-15T10:30:00Z',
     anonymous: false,
-    message: 'Happy to support education in our community!'
+    message: 'Happy to support education in our community!',
+    rewardLevel: 'silver'
   },
   {
     id: 'DON002',
@@ -113,7 +161,8 @@ const donationHistory = [
     amount: 50,
     date: '2024-01-10T14:20:00Z',
     anonymous: true,
-    message: ''
+    message: '',
+    rewardLevel: 'bronze'
   }
 ];
 
@@ -121,6 +170,7 @@ export default function Fundraising() {
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [isDonationDialogOpen, setIsDonationDialogOpen] = useState(false);
   const [isCreateCampaignDialogOpen, setIsCreateCampaignDialogOpen] = useState(false);
+  const [isEditRewardsDialogOpen, setIsEditRewardsDialogOpen] = useState(false);
   const [donationAmount, setDonationAmount] = useState('');
   const [donationMessage, setDonationMessage] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -133,9 +183,18 @@ export default function Fundraising() {
     category: '',
     rewards: []
   });
+  const [editingRewards, setEditingRewards] = useState([]);
+  const [newReward, setNewReward] = useState({
+    amount: '',
+    reward: '',
+    description: '',
+    icon: 'star',
+    color: 'bronze'
+  });
 
-  // Mock user role (in real app, this would come from auth context)
-  const userRole = 'admin'; // or 'member'
+  // Mock user role and member status
+  const userRole = 'admin';
+  const isMember = true; // This would come from auth context
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -157,11 +216,46 @@ export default function Fundraising() {
     }
   };
 
+  const getRewardIcon = (iconType) => {
+    switch (iconType) {
+      case 'star': return <Star className="h-4 w-4" />;
+      case 'medal': return <Medal className="h-4 w-4" />;
+      case 'trophy': return <Trophy className="h-4 w-4" />;
+      case 'crown': return <Crown className="h-4 w-4" />;
+      default: return <Gift className="h-4 w-4" />;
+    }
+  };
+
+  const getRewardColorClass = (color) => {
+    switch (color) {
+      case 'bronze': return 'bg-amber-100 text-amber-800 border-amber-200';
+      case 'silver': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'gold': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'platinum': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'diamond': return 'bg-blue-100 text-blue-800 border-blue-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
   const calculateProgress = (raised, goal) => {
     return Math.min((raised / goal) * 100, 100);
   };
 
+  const getDonorLevel = (amount, campaign) => {
+    const levels = campaign.donorLevels;
+    for (const [key, level] of Object.entries(levels)) {
+      if (amount >= level.min && amount <= level.max) {
+        return { key, ...level };
+      }
+    }
+    return null;
+  };
+
   const handleDonate = (campaign) => {
+    if (!isMember) {
+      alert('Only Lambda Empire members can make donations. Please log in as a member.');
+      return;
+    }
     setSelectedCampaign(campaign);
     setDonationAmount('');
     setDonationMessage('');
@@ -184,6 +278,44 @@ export default function Fundraising() {
     // In real app, would update campaign data and show success message
   };
 
+  const handleEditRewards = (campaign) => {
+    setSelectedCampaign(campaign);
+    setEditingRewards([...campaign.rewards]);
+    setIsEditRewardsDialogOpen(true);
+  };
+
+  const addNewReward = () => {
+    if (!newReward.amount || !newReward.reward) return;
+    
+    const reward = {
+      id: Date.now(),
+      amount: parseFloat(newReward.amount),
+      reward: newReward.reward,
+      description: newReward.description,
+      icon: newReward.icon,
+      color: newReward.color
+    };
+    
+    setEditingRewards([...editingRewards, reward]);
+    setNewReward({
+      amount: '',
+      reward: '',
+      description: '',
+      icon: 'star',
+      color: 'bronze'
+    });
+  };
+
+  const removeReward = (rewardId) => {
+    setEditingRewards(editingRewards.filter(r => r.id !== rewardId));
+  };
+
+  const saveRewards = () => {
+    // In real app, would save to backend
+    console.log('Saving rewards:', editingRewards);
+    setIsEditRewardsDialogOpen(false);
+  };
+
   const createCampaign = async () => {
     console.log('Creating campaign:', newCampaign);
     
@@ -199,7 +331,6 @@ export default function Fundraising() {
       category: '',
       rewards: []
     });
-    // In real app, would add to campaigns list and show success message
   };
 
   const shareCampaign = (campaign) => {
@@ -207,6 +338,28 @@ export default function Fundraising() {
     navigator.clipboard.writeText(shareUrl);
     // Show toast notification
   };
+
+  // Non-member access restriction
+  if (!isMember) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+        <Card className="max-w-md mx-auto">
+          <CardHeader className="text-center">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <CardTitle>Access Restricted</CardTitle>
+            <CardDescription>
+              This page is only accessible to Lambda Empire members. Please log in with your member credentials to view fundraising campaigns.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Button onClick={() => window.location.href = '/login'} className="w-full">
+              Member Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -322,6 +475,19 @@ export default function Fundraising() {
                         <div className="text-sm text-gray-600">Donors</div>
                       </div>
                     </div>
+
+                    {/* Donor Levels Display */}
+                    <div className="bg-white p-4 rounded-lg border">
+                      <h4 className="font-semibold mb-3">Donor Recognition Levels</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {Object.entries(campaign.donorLevels).map(([key, level]) => (
+                          <div key={key} className={`p-2 rounded text-center text-xs ${getRewardColorClass(key)}`}>
+                            <div className="font-medium">{level.title}</div>
+                            <div>${level.min}+ ({level.count} donors)</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="space-y-3">
@@ -341,15 +507,32 @@ export default function Fundraising() {
                       <Share2 className="h-4 w-4 mr-2" />
                       Share Campaign
                     </Button>
+                    {userRole === 'admin' && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleEditRewards(campaign)}
+                        className="w-full"
+                      >
+                        <Gift className="h-4 w-4 mr-2" />
+                        Edit Rewards
+                      </Button>
+                    )}
                   </div>
                 </div>
                 
                 <div className="border-t pt-4">
-                  <h4 className="font-semibold mb-2">Donor Rewards</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <h4 className="font-semibold mb-3">Donor Rewards & Recognition</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {campaign.rewards.map((reward, index) => (
-                      <div key={index} className="text-sm bg-white p-2 rounded border">
-                        <span className="font-medium">${reward.amount}+:</span> {reward.reward}
+                      <div key={index} className={`p-3 rounded border-2 ${getRewardColorClass(reward.color)}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          {getRewardIcon(reward.icon)}
+                          <span className="font-medium">${reward.amount}+:</span>
+                        </div>
+                        <div className="text-sm font-medium mb-1">{reward.reward}</div>
+                        {reward.description && (
+                          <div className="text-xs opacity-80">{reward.description}</div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -423,6 +606,15 @@ export default function Fundraising() {
                     >
                       <Share2 className="h-4 w-4" />
                     </Button>
+                    {userRole === 'admin' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditRewards(campaign)}
+                      >
+                        <Gift className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                   
                   <div className="text-xs text-gray-500 flex items-center gap-2">
@@ -458,6 +650,11 @@ export default function Fundraising() {
                           <p className="text-sm text-gray-500 mt-1 italic">
                             "{donation.message}"
                           </p>
+                        )}
+                        {donation.rewardLevel && (
+                          <Badge className={`mt-2 ${getRewardColorClass(donation.rewardLevel)}`}>
+                            {donation.rewardLevel.charAt(0).toUpperCase() + donation.rewardLevel.slice(1)} Donor
+                          </Badge>
                         )}
                       </div>
                       <div className="text-right">
@@ -539,6 +736,14 @@ export default function Fundraising() {
                             <Edit className="h-3 w-3 mr-1" />
                             Edit
                           </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleEditRewards(campaign)}
+                          >
+                            <Gift className="h-3 w-3 mr-1" />
+                            Rewards
+                          </Button>
                           <Button size="sm" variant="outline">
                             <Settings className="h-3 w-3" />
                           </Button>
@@ -592,6 +797,18 @@ export default function Fundraising() {
                     className="pl-10"
                   />
                 </div>
+                {donationAmount && selectedCampaign && (
+                  <div className="text-sm">
+                    {(() => {
+                      const level = getDonorLevel(parseFloat(donationAmount), selectedCampaign);
+                      return level ? (
+                        <Badge className={getRewardColorClass(level.key)}>
+                          {level.title} Level
+                        </Badge>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -606,27 +823,26 @@ export default function Fundraising() {
               </div>
 
               <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
+                <Switch
                   id="anonymous"
                   checked={isAnonymous}
-                  onChange={(e) => setIsAnonymous(e.target.checked)}
-                  className="rounded"
+                  onCheckedChange={setIsAnonymous}
                 />
                 <Label htmlFor="anonymous" className="text-sm">
                   Make this donation anonymous
                 </Label>
               </div>
 
-              {selectedCampaign.rewards && (
+              {selectedCampaign.rewards && donationAmount && (
                 <div className="bg-blue-50 p-3 rounded-lg">
-                  <h4 className="font-medium text-sm mb-2">Donor Rewards</h4>
+                  <h4 className="font-medium text-sm mb-2">Your Rewards</h4>
                   <div className="space-y-1">
                     {selectedCampaign.rewards
                       .filter(reward => parseFloat(donationAmount) >= reward.amount)
                       .map((reward, index) => (
-                        <div key={index} className="text-xs text-blue-700">
-                          • {reward.reward}
+                        <div key={index} className="text-xs text-blue-700 flex items-center gap-1">
+                          {getRewardIcon(reward.icon)}
+                          {reward.reward}
                         </div>
                       ))}
                   </div>
@@ -653,6 +869,153 @@ export default function Fundraising() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Rewards Dialog (Admin Only) */}
+      {userRole === 'admin' && (
+        <Dialog open={isEditRewardsDialogOpen} onOpenChange={setIsEditRewardsDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Gift className="h-5 w-5" />
+                Customize Donor Awards - {selectedCampaign?.title}
+              </DialogTitle>
+              <DialogDescription>
+                Create and manage reward tiers to recognize and incentivize donors
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              {/* Existing Rewards */}
+              <div>
+                <h3 className="font-semibold mb-3">Current Reward Tiers</h3>
+                <div className="space-y-3">
+                  {editingRewards.map((reward, index) => (
+                    <div key={reward.id} className={`p-4 rounded-lg border-2 ${getRewardColorClass(reward.color)}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {getRewardIcon(reward.icon)}
+                          <div>
+                            <div className="font-medium">${reward.amount}+ - {reward.reward}</div>
+                            {reward.description && (
+                              <div className="text-sm opacity-80">{reward.description}</div>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => removeReward(reward.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Add New Reward */}
+              <div className="border-t pt-6">
+                <h3 className="font-semibold mb-3">Add New Reward Tier</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rewardAmount">Minimum Amount *</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="rewardAmount"
+                        type="number"
+                        placeholder="0"
+                        value={newReward.amount}
+                        onChange={(e) => setNewReward(prev => ({...prev, amount: e.target.value}))}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="rewardTitle">Reward Title *</Label>
+                    <Input
+                      id="rewardTitle"
+                      placeholder="e.g., Thank you email and certificate"
+                      value={newReward.reward}
+                      onChange={(e) => setNewReward(prev => ({...prev, reward: e.target.value}))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="rewardIcon">Icon</Label>
+                    <Select value={newReward.icon} onValueChange={(value) => setNewReward(prev => ({...prev, icon: value}))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="star">⭐ Star</SelectItem>
+                        <SelectItem value="medal">🏅 Medal</SelectItem>
+                        <SelectItem value="trophy">🏆 Trophy</SelectItem>
+                        <SelectItem value="crown">👑 Crown</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="rewardColor">Tier Color</Label>
+                    <Select value={newReward.color} onValueChange={(value) => setNewReward(prev => ({...prev, color: value}))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bronze">🥉 Bronze</SelectItem>
+                        <SelectItem value="silver">🥈 Silver</SelectItem>
+                        <SelectItem value="gold">🥇 Gold</SelectItem>
+                        <SelectItem value="platinum">💎 Platinum</SelectItem>
+                        <SelectItem value="diamond">💠 Diamond</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="rewardDescription">Description (Optional)</Label>
+                    <Textarea
+                      id="rewardDescription"
+                      placeholder="Detailed description of what the donor receives..."
+                      value={newReward.description}
+                      onChange={(e) => setNewReward(prev => ({...prev, description: e.target.value}))}
+                      className="resize-none"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  onClick={addNewReward}
+                  disabled={!newReward.amount || !newReward.reward}
+                  className="mt-4"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Reward Tier
+                </Button>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsEditRewardsDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={saveRewards}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                <Gift className="h-4 w-4 mr-2" />
+                Save Rewards
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Create Campaign Dialog (Admin Only) */}
       {userRole === 'admin' && (
@@ -737,7 +1100,7 @@ export default function Fundraising() {
               <Alert>
                 <Gift className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Pro Tip:</strong> Campaigns with clear goals, compelling descriptions, and donor rewards typically raise 40% more funds.
+                  <strong>Pro Tip:</strong> Campaigns with clear goals, compelling descriptions, and donor rewards typically raise 40% more funds. You can add custom rewards after creating the campaign.
                 </AlertDescription>
               </Alert>
             </div>

@@ -1,435 +1,524 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   User, 
   Clock, 
   CheckCircle, 
-  AlertTriangle, 
-  FileText, 
-  Upload,
+  XCircle, 
+  AlertTriangle,
+  FileText,
   Send,
-  Info
+  Eye,
+  MessageSquare,
+  Calendar,
+  UserCheck,
+  UserX,
+  UserMinus,
+  Shield
 } from 'lucide-react';
 
-const statusOptions = [
+// Mock data for status change requests
+const mockStatusRequests = [
   {
-    value: 'inactive',
-    label: 'Inactive',
-    description: 'Temporary leave while maintaining membership',
-    icon: Clock,
-    color: 'bg-yellow-100 text-yellow-800',
-    requiresReason: true,
-    requiresDocuments: false
+    id: 'REQ001',
+    memberId: 'LEM001',
+    memberName: 'John Doe',
+    currentStatus: 'Inactive',
+    requestedStatus: 'Active',
+    reason: 'I have completed all required training and am ready to resume active participation in Lambda Empire activities.',
+    submittedDate: '2024-01-20T10:00:00Z',
+    status: 'pending',
+    reviewedBy: null,
+    reviewedDate: null,
+    adminNotes: ''
   },
   {
-    value: 'non_member',
-    label: 'Non-Member',
-    description: 'Permanent resignation from Lambda Empire',
-    icon: User,
-    color: 'bg-gray-100 text-gray-800',
-    requiresReason: true,
-    requiresDocuments: false
+    id: 'REQ002',
+    memberId: 'LEM002',
+    memberName: 'Jane Smith',
+    currentStatus: 'Active',
+    requestedStatus: 'Inactive',
+    reason: 'Due to work commitments, I need to temporarily step back from active participation.',
+    submittedDate: '2024-01-18T14:30:00Z',
+    status: 'approved',
+    reviewedBy: 'Admin Sarah Davis',
+    reviewedDate: '2024-01-19T09:15:00Z',
+    adminNotes: 'Approved temporary inactive status. Member can reactivate when ready.'
+  },
+  {
+    id: 'REQ003',
+    memberId: 'LEM003',
+    memberName: 'Michael Brown',
+    currentStatus: 'Suspended',
+    requestedStatus: 'Active',
+    reason: 'I have addressed the issues that led to my suspension and completed the required remedial actions.',
+    submittedDate: '2024-01-15T16:45:00Z',
+    status: 'rejected',
+    reviewedBy: 'Admin Sarah Davis',
+    reviewedDate: '2024-01-17T11:30:00Z',
+    adminNotes: 'Additional requirements must be completed before reinstatement. Please contact administration.'
   }
 ];
 
-const reasonCategories = [
-  { value: 'personal', label: 'Personal/Family Emergency' },
-  { value: 'medical', label: 'Medical Leave' },
-  { value: 'academic', label: 'Academic Focus' },
-  { value: 'career', label: 'Career Change' },
-  { value: 'relocation', label: 'Relocation' },
-  { value: 'financial', label: 'Financial Hardship' },
-  { value: 'other', label: 'Other' }
-];
+// Status definitions with descriptions and requirements
+const statusDefinitions = {
+  'Active': {
+    description: 'Full participation in all Lambda Empire activities and benefits',
+    requirements: ['Current dues payment', 'Completed orientation', 'Good standing'],
+    icon: <UserCheck className="h-4 w-4" />,
+    color: 'bg-green-100 text-green-800'
+  },
+  'Inactive': {
+    description: 'Temporary non-participation while maintaining membership',
+    requirements: ['Valid reason for inactivity', 'Intent to return'],
+    icon: <UserMinus className="h-4 w-4" />,
+    color: 'bg-yellow-100 text-yellow-800'
+  },
+  'Suspended': {
+    description: 'Temporary restriction due to disciplinary action',
+    requirements: ['Administrative review', 'Completion of remedial actions'],
+    icon: <UserX className="h-4 w-4" />,
+    color: 'bg-red-100 text-red-800'
+  },
+  'Non-member': {
+    description: 'No longer a member of Lambda Empire',
+    requirements: ['Formal resignation or termination process'],
+    icon: <User className="h-4 w-4" />,
+    color: 'bg-gray-100 text-gray-800'
+  }
+};
 
 export default function MemberStatusRequest() {
-  const [formData, setFormData] = useState({
+  const [requests, setRequests] = useState(mockStatusRequests);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+  const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
+  const [reviewDecision, setReviewDecision] = useState('');
+  const [adminNotes, setAdminNotes] = useState('');
+  const [newRequest, setNewRequest] = useState({
     requestedStatus: '',
-    reasonCategory: '',
-    reason: '',
-    expectedDuration: '',
-    effectiveDate: '',
-    contactDuringLeave: true,
-    returnDate: '',
-    additionalNotes: ''
+    reason: ''
   });
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState('');
 
-  // Mock current member data
-  const currentMember = {
-    id: 'LEM001234',
+  // Mock user data
+  const currentUser = {
+    id: 'LEM001',
     name: 'John Doe',
-    currentStatus: 'Active',
-    email: 'john.doe@email.com',
-    chapter: 'Alpha Chapter',
-    joinDate: '2020-03-15'
+    currentStatus: 'Inactive',
+    role: 'member' // or 'admin'
   };
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    if (error) setError('');
+  const handleReviewRequest = (request) => {
+    setSelectedRequest(request);
+    setReviewDecision('');
+    setAdminNotes('');
+    setIsReviewDialogOpen(true);
   };
 
-  const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files);
-    setUploadedFiles(prev => [...prev, ...files]);
+  const submitReview = async () => {
+    if (!reviewDecision) return;
+
+    console.log('Submitting review:', {
+      requestId: selectedRequest.id,
+      decision: reviewDecision,
+      notes: adminNotes
+    });
+
+    // Update the request status
+    setRequests(prev => prev.map(req => 
+      req.id === selectedRequest.id 
+        ? {
+            ...req,
+            status: reviewDecision,
+            reviewedBy: 'Current Admin',
+            reviewedDate: new Date().toISOString(),
+            adminNotes: adminNotes
+          }
+        : req
+    ));
+
+    setIsReviewDialogOpen(false);
+    setSelectedRequest(null);
   };
 
-  const removeFile = (index) => {
-    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  const submitStatusRequest = async () => {
+    if (!newRequest.requestedStatus || !newRequest.reason.trim()) return;
+
+    const request = {
+      id: `REQ${Date.now()}`,
+      memberId: currentUser.id,
+      memberName: currentUser.name,
+      currentStatus: currentUser.currentStatus,
+      requestedStatus: newRequest.requestedStatus,
+      reason: newRequest.reason,
+      submittedDate: new Date().toISOString(),
+      status: 'pending',
+      reviewedBy: null,
+      reviewedDate: null,
+      adminNotes: ''
+    };
+
+    setRequests(prev => [request, ...prev]);
+    setNewRequest({ requestedStatus: '', reason: '' });
+    setIsSubmitDialogOpen(false);
   };
 
-  const validateForm = () => {
-    if (!formData.requestedStatus) {
-      setError('Please select a status to request');
-      return false;
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
-    if (!formData.reasonCategory) {
-      setError('Please select a reason category');
-      return false;
-    }
-    if (!formData.reason.trim()) {
-      setError('Please provide a detailed reason for your request');
-      return false;
-    }
-    if (!formData.effectiveDate) {
-      setError('Please specify when this change should take effect');
-      return false;
-    }
-    return true;
   };
 
-  const submitRequest = async () => {
-    if (!validateForm()) return;
-
-    setIsSubmitting(true);
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log('Status change request submitted:', {
-        ...formData,
-        memberId: currentMember.id,
-        memberName: currentMember.name,
-        currentStatus: currentMember.currentStatus,
-        uploadedFiles: uploadedFiles.map(f => f.name),
-        submissionDate: new Date().toISOString()
-      });
-
-      setSubmitted(true);
-    } catch (err) {
-      setError('Failed to submit request. Please try again.');
-    } finally {
-      setIsSubmitting(false);
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'pending': return <Clock className="h-4 w-4" />;
+      case 'approved': return <CheckCircle className="h-4 w-4" />;
+      case 'rejected': return <XCircle className="h-4 w-4" />;
+      default: return <FileText className="h-4 w-4" />;
     }
   };
 
-  const selectedStatus = statusOptions.find(option => option.value === formData.requestedStatus);
+  const canRequestStatus = (targetStatus) => {
+    const current = currentUser.currentStatus;
+    
+    // Define allowed transitions
+    const allowedTransitions = {
+      'Active': ['Inactive'],
+      'Inactive': ['Active'],
+      'Suspended': ['Active'], // Requires admin approval
+      'Non-member': [] // Cannot request status changes
+    };
 
-  if (submitted) {
-    return (
-      <div className="max-w-2xl mx-auto">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Request Submitted Successfully</h2>
-            <p className="text-gray-600 mb-6">
-              Your status change request has been submitted and is pending admin approval. 
-              You will receive an email notification once your request has been reviewed.
-            </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <h3 className="font-semibold text-blue-900 mb-2">Request Summary</h3>
-              <div className="text-left text-sm space-y-1">
-                <p><strong>Requested Status:</strong> {selectedStatus?.label}</p>
-                <p><strong>Current Status:</strong> {currentMember.currentStatus}</p>
-                <p><strong>Effective Date:</strong> {new Date(formData.effectiveDate).toLocaleDateString()}</p>
-                <p><strong>Reason:</strong> {formData.reason}</p>
-              </div>
-            </div>
-            <Button onClick={() => window.location.reload()} className="bg-lambda-purple hover:bg-lambda-purple/90">
-              Submit Another Request
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+    return allowedTransitions[current]?.includes(targetStatus) || false;
+  };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 rounded-xl text-white">
-        <div className="flex items-center gap-4">
-          <User className="h-12 w-12" />
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Request Status Change</h1>
-            <p className="text-white/90 mt-1">Submit a request to change your membership status</p>
+      <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 rounded-xl text-white">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Shield className="h-12 w-12" />
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">Member Status Requests</h1>
+              <p className="text-white/90 mt-1">Manage membership status changes and approvals</p>
+            </div>
           </div>
+          {currentUser.role === 'member' && (
+            <Button
+              onClick={() => setIsSubmitDialogOpen(true)}
+              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Request Status Change
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Current Status */}
+      {/* Status Definitions */}
       <Card>
         <CardHeader>
-          <CardTitle>Current Member Information</CardTitle>
+          <CardTitle>Membership Status Definitions</CardTitle>
+          <CardDescription>
+            Understanding the different membership status levels and their requirements
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label className="text-sm font-medium text-gray-700">Name</Label>
-              <p className="text-lg font-semibold">{currentMember.name}</p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium text-gray-700">Member ID</Label>
-              <p className="text-lg font-mono">{currentMember.id}</p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium text-gray-700">Current Status</Label>
-              <Badge className="bg-green-100 text-green-800">
-                {currentMember.currentStatus}
-              </Badge>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(statusDefinitions).map(([status, definition]) => (
+              <div key={status} className="border rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge className={definition.color}>
+                    {definition.icon}
+                    {status}
+                  </Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-3">{definition.description}</p>
+                <div>
+                  <h4 className="text-sm font-medium mb-1">Requirements:</h4>
+                  <ul className="text-xs text-gray-500 space-y-1">
+                    {definition.requirements.map((req, index) => (
+                      <li key={index} className="flex items-center gap-1">
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        {req}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Status Request Form */}
+      {/* Status Change Requests */}
       <Card>
         <CardHeader>
-          <CardTitle>Status Change Request</CardTitle>
+          <CardTitle>Status Change Requests</CardTitle>
           <CardDescription>
-            Please provide detailed information about your status change request
+            {currentUser.role === 'admin' 
+              ? 'Review and approve member status change requests'
+              : 'Track your status change requests and their approval status'
+            }
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Status Selection */}
+        <CardContent>
           <div className="space-y-4">
-            <Label className="text-lg font-semibold">Requested Status</Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {statusOptions.map((option) => {
-                const IconComponent = option.icon;
-                return (
-                  <div
-                    key={option.value}
-                    className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                      formData.requestedStatus === option.value
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => handleInputChange('requestedStatus', option.value)}
-                  >
+            {requests.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No status change requests found.</p>
+              </div>
+            ) : (
+              requests.map(request => (
+                <div key={request.id} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${option.color}`}>
-                        <IconComponent className="h-5 w-5" />
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(request.status)}
+                        <h3 className="font-semibold">{request.memberName}</h3>
                       </div>
-                      <div>
-                        <h3 className="font-semibold">{option.label}</h3>
-                        <p className="text-sm text-gray-600">{option.description}</p>
-                      </div>
+                      <Badge className={getStatusColor(request.status)}>
+                        {request.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">
+                        {request.currentStatus} → {request.requestedStatus}
+                      </Badge>
+                      {currentUser.role === 'admin' && request.status === 'pending' && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleReviewRequest(request)}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          Review
+                        </Button>
+                      )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                  
+                  <div className="space-y-2">
+                    <div>
+                      <Label className="text-sm font-medium">Reason for Change:</Label>
+                      <p className="text-sm text-gray-600 mt-1">{request.reason}</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <Label className="text-xs text-gray-500">Submitted:</Label>
+                        <p>{new Date(request.submittedDate).toLocaleString()}</p>
+                      </div>
+                      {request.reviewedDate && (
+                        <div>
+                          <Label className="text-xs text-gray-500">Reviewed:</Label>
+                          <p>{new Date(request.reviewedDate).toLocaleString()}</p>
+                          <p className="text-xs text-gray-500">by {request.reviewedBy}</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {request.adminNotes && (
+                      <div className="bg-gray-50 p-3 rounded">
+                        <Label className="text-sm font-medium">Admin Notes:</Label>
+                        <p className="text-sm text-gray-600 mt-1">{request.adminNotes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
+        </CardContent>
+      </Card>
 
-          {formData.requestedStatus && (
-            <>
-              {/* Reason Category */}
+      {/* Review Request Dialog (Admin Only) */}
+      {currentUser.role === 'admin' && (
+        <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Review Status Request
+              </DialogTitle>
+              <DialogDescription>
+                Review and approve or reject the status change request
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedRequest && (
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-semibold mb-2">{selectedRequest.memberName}</h3>
+                  <div className="text-sm space-y-1">
+                    <p><strong>Current Status:</strong> {selectedRequest.currentStatus}</p>
+                    <p><strong>Requested Status:</strong> {selectedRequest.requestedStatus}</p>
+                    <p><strong>Submitted:</strong> {new Date(selectedRequest.submittedDate).toLocaleString()}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium">Member's Reason:</Label>
+                  <p className="text-sm text-gray-600 mt-1 p-3 bg-gray-50 rounded">
+                    {selectedRequest.reason}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="reviewDecision">Decision *</Label>
+                  <Select value={reviewDecision} onValueChange={setReviewDecision}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select decision" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="approved">✅ Approve Request</SelectItem>
+                      <SelectItem value="rejected">❌ Reject Request</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="adminNotes">Admin Notes</Label>
+                  <Textarea
+                    id="adminNotes"
+                    placeholder="Add notes about your decision..."
+                    value={adminNotes}
+                    onChange={(e) => setAdminNotes(e.target.value)}
+                    className="min-h-[80px]"
+                  />
+                </div>
+
+                {reviewDecision === 'rejected' && (
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      Please provide clear feedback in the admin notes explaining why the request was rejected and what steps the member can take.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsReviewDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={submitReview}
+                disabled={!reviewDecision}
+                className={reviewDecision === 'approved' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+              >
+                {reviewDecision === 'approved' ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Approve Request
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Reject Request
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Submit Status Request Dialog (Member Only) */}
+      {currentUser.role === 'member' && (
+        <Dialog open={isSubmitDialogOpen} onOpenChange={setIsSubmitDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Send className="h-5 w-5" />
+                Request Status Change
+              </DialogTitle>
+              <DialogDescription>
+                Submit a request to change your membership status
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h3 className="font-semibold mb-1">Current Status</h3>
+                <Badge className={statusDefinitions[currentUser.currentStatus].color}>
+                  {statusDefinitions[currentUser.currentStatus].icon}
+                  {currentUser.currentStatus}
+                </Badge>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="reasonCategory">Reason Category *</Label>
-                <Select value={formData.reasonCategory} onValueChange={(value) => handleInputChange('reasonCategory', value)}>
+                <Label htmlFor="requestedStatus">Requested Status *</Label>
+                <Select value={newRequest.requestedStatus} onValueChange={(value) => setNewRequest(prev => ({...prev, requestedStatus: value}))}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select reason category" />
+                    <SelectValue placeholder="Select new status" />
                   </SelectTrigger>
                   <SelectContent>
-                    {reasonCategories.map((category) => (
-                      <SelectItem key={category.value} value={category.value}>
-                        {category.label}
-                      </SelectItem>
-                    ))}
+                    {Object.keys(statusDefinitions)
+                      .filter(status => status !== currentUser.currentStatus && canRequestStatus(status))
+                      .map(status => (
+                        <SelectItem key={status} value={status}>
+                          {statusDefinitions[status].icon}
+                          {status}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Detailed Reason */}
               <div className="space-y-2">
-                <Label htmlFor="reason">Detailed Reason *</Label>
+                <Label htmlFor="reason">Reason for Change *</Label>
                 <Textarea
                   id="reason"
-                  placeholder="Please provide a detailed explanation for your status change request..."
-                  value={formData.reason}
-                  onChange={(e) => handleInputChange('reason', e.target.value)}
+                  placeholder="Please explain why you are requesting this status change..."
+                  value={newRequest.reason}
+                  onChange={(e) => setNewRequest(prev => ({...prev, reason: e.target.value}))}
                   className="min-h-[100px]"
                 />
               </div>
 
-              {/* Dates */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="effectiveDate">Effective Date *</Label>
-                  <Input
-                    id="effectiveDate"
-                    type="date"
-                    value={formData.effectiveDate}
-                    onChange={(e) => handleInputChange('effectiveDate', e.target.value)}
-                  />
-                </div>
-                
-                {formData.requestedStatus === 'inactive' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="returnDate">Expected Return Date</Label>
-                    <Input
-                      id="returnDate"
-                      type="date"
-                      value={formData.returnDate}
-                      onChange={(e) => handleInputChange('returnDate', e.target.value)}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Expected Duration */}
-              {formData.requestedStatus === 'inactive' && (
-                <div className="space-y-2">
-                  <Label htmlFor="expectedDuration">Expected Duration</Label>
-                  <Select value={formData.expectedDuration} onValueChange={(value) => handleInputChange('expectedDuration', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select expected duration" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1_month">1 Month</SelectItem>
-                      <SelectItem value="3_months">3 Months</SelectItem>
-                      <SelectItem value="6_months">6 Months</SelectItem>
-                      <SelectItem value="1_year">1 Year</SelectItem>
-                      <SelectItem value="indefinite">Indefinite</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Supporting Documents */}
-              <div className="space-y-4">
-                <Label>Supporting Documents (Optional)</Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600 mb-2">
-                    Upload any supporting documents (medical certificates, etc.)
-                  </p>
-                  <input
-                    type="file"
-                    multiple
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="file-upload"
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.getElementById('file-upload').click()}
-                  >
-                    Choose Files
-                  </Button>
-                </div>
-                
-                {uploadedFiles.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Uploaded Files</Label>
-                    {uploadedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm">{file.name}</span>
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => removeFile(index)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Additional Notes */}
-              <div className="space-y-2">
-                <Label htmlFor="additionalNotes">Additional Notes</Label>
-                <Textarea
-                  id="additionalNotes"
-                  placeholder="Any additional information you'd like to provide..."
-                  value={formData.additionalNotes}
-                  onChange={(e) => handleInputChange('additionalNotes', e.target.value)}
-                />
-              </div>
-
-              {/* Important Information */}
               <Alert>
-                <Info className="h-4 w-4" />
+                <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Important:</strong> Your request will be reviewed by an administrator. 
-                  You will receive an email notification once your request has been approved or rejected. 
-                  Status changes typically take 1-3 business days to process.
+                  All status change requests require administrative approval. You will be notified once your request has been reviewed.
                 </AlertDescription>
               </Alert>
-
-              {/* Error Message */}
-              {error && (
-                <Alert className="border-red-200 bg-red-50">
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
-                  <AlertDescription className="text-red-700">
-                    {error}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {/* Submit Button */}
-              <div className="flex gap-3 pt-4">
-                <Button
-                  onClick={submitRequest}
-                  disabled={isSubmitting}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Submitting Request...
-                    </div>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4 mr-2" />
-                      Submit Request
-                    </>
-                  )}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => window.history.back()}>
-                  Cancel
-                </Button>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsSubmitDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={submitStatusRequest}
+                disabled={!newRequest.requestedStatus || !newRequest.reason.trim()}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Submit Request
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
