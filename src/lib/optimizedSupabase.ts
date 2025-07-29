@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://tvsfdoesslskumujvafd.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2c2Zkb2Vzc2xza3VtdWp2YWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjE3Nzg0MzcsImV4cCI6MjAzNzM1NDQzN30.Ej8Ks1Ej7Ej8Ks1Ej7Ej8Ks1Ej7Ej8Ks1Ej7Ej8Ks1Ej7';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2c2Zkb2Vzc2xza3VtdWp2YWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzMTU2MzcsImV4cCI6MjA2ODg5MTYzN30.n8F8TeqsMpMynOwwdanr5eg2bv7tpDxGGvAYwl7rvOA';
 
 // Optimized Supabase client with connection pooling and caching
 export const optimizedSupabase = createClient(supabaseUrl, supabaseKey, {
