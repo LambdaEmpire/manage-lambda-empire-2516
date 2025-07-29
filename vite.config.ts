@@ -11,37 +11,53 @@ export default defineConfig({
     },
   },
   build: {
+    // Optimize build for better performance
+    target: 'esnext',
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console.logs in production
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info', 'console.debug']
+      }
+    },
     rollupOptions: {
       output: {
+        // Better chunk splitting for optimal loading
         manualChunks: {
-          // Separate vendor chunks for better caching
-          'react-vendor': ['react', 'react-dom'],
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
-          'lucide': ['lucide-react'],
-          'supabase': ['@supabase/supabase-js'],
-          'router': ['react-router-dom'],
+          'supabase': ['@supabase/supabase-js', '@supabase/storage-js'],
           'query': ['@tanstack/react-query'],
-          'forms': ['react-hook-form', '@hookform/resolvers', 'zod']
+          'forms': ['react-hook-form', '@hookform/resolvers', 'zod'],
+          'lucide': ['lucide-react']
         }
       }
     },
     // Increase chunk size warning limit
     chunkSizeWarningLimit: 1000,
-    // Disable source maps for production
-    sourcemap: false,
-    // Use esbuild for minification (faster than terser)
-    minify: 'esbuild',
-    // Optimize target
-    target: 'es2015'
+    // Enable source maps for better debugging
+    sourcemap: false // Disable in production for smaller builds
   },
-  // Optimize dev server
   server: {
+    // Development server optimizations
     hmr: {
-      overlay: false
+      overlay: false // Disable error overlay for better UX
     }
   },
   // Enable CSS code splitting
   css: {
-    devSourcemap: true
+    devSourcemap: false
+  },
+  // Optimize dependencies
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      '@supabase/supabase-js',
+      '@tanstack/react-query',
+      'lucide-react'
+    ]
   }
 })
