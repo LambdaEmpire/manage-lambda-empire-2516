@@ -11,7 +11,7 @@ import { Label } from '../components/ui/label';
 import { Switch } from '../components/ui/switch';
 import { useToast } from '../hooks/use-toast';
 import MemberAccomplishments from '../components/MemberAccomplishments';
-import { User, Mail, Phone, MapPin, Calendar, Edit, Save, X } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, Edit, Save, X, Camera, Upload } from 'lucide-react';
 
 interface UserProfile {
   id: string;
@@ -42,6 +42,7 @@ const MemberProfile = () => {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -116,6 +117,99 @@ const MemberProfile = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !profile) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Please select a valid image file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "Image size must be less than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploadingPhoto(true);
+
+    try {
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${profile.id}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('profile-photos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-photos')
+        .getPublicUrl(filePath);
+
+      // Update profile with new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: profile.id,
+          avatar_url: publicUrl,
+          // Keep existing data
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          phone: profile.phone,
+          bio: profile.bio,
+          location: profile.location,
+          city: profile.city,
+          state: profile.state,
+          can_approve_members: profile.can_approve_members,
+          visibility_settings: profile.visibility_settings
+        });
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Update local state
+      const updatedProfile = { ...profile, avatar_url: publicUrl };
+      setProfile(updatedProfile);
+      setEditForm(updatedProfile);
+
+      toast({
+        title: "Success",
+        description: "Profile photo updated successfully"
+      });
+
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload profile photo",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -215,12 +309,35 @@ const MemberProfile = () => {
         <CardContent className="p-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-6">
-              <Avatar className="w-24 h-24">
-                <AvatarImage src={profile.avatar_url} />
-                <AvatarFallback className="text-2xl">
-                  {profile.first_name?.[0]}{profile.last_name?.[0]}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="w-24 h-24">
+                  <AvatarImage src={profile.avatar_url} />
+                  <AvatarFallback className="text-2xl">
+                    {profile.first_name?.[0]}{profile.last_name?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+                {isOwnProfile && (
+                  <div className="absolute -bottom-2 -right-2">
+                    <label htmlFor="photo-upload" className="cursor-pointer">
+                      <div className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full shadow-lg transition-colors">
+                        {uploadingPhoto ? (
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <Camera className="w-4 h-4" />
+                        )}
+                      </div>
+                    </label>
+                    <input
+                      id="photo-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      className="hidden"
+                      disabled={uploadingPhoto}
+                    />
+                  </div>
+                )}
+              </div>
               <div className="space-y-2">
                 <h1 className="text-3xl font-bold">
                   {profile.first_name} {profile.last_name}

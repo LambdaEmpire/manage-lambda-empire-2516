@@ -553,62 +553,6 @@ export default function SquarePaymentSystem() {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Square Integration Instructions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Square Integration Information</CardTitle>
-          <CardDescription>
-            How Lambda Empire uses Square for secure payment processing
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-semibold mb-2 flex items-center gap-2">
-                <Shield className="h-4 w-4 text-green-600" />
-                Security & Compliance
-              </h3>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• PCI DSS Level 1 compliant</li>
-                <li>• End-to-end encryption</li>
-                <li>• Fraud detection & prevention</li>
-                <li>• Secure tokenization</li>
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="font-semibold mb-2 flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-blue-600" />
-                Accepted Payment Methods
-              </h3>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Visa, Mastercard, American Express</li>
-                <li>• Discover, JCB, UnionPay</li>
-                <li>• Apple Pay, Google Pay</li>
-                <li>• ACH bank transfers</li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="border-t pt-4">
-            <p className="text-sm text-gray-600">
-              <strong>Processing Fees:</strong> Square charges a 2.9% + $0.30 processing fee for card payments. 
-              This fee is automatically calculated and added to your payment total.
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <Info className="h-4 w-4" />
-            <p>
-              For questions about payments or refunds, contact our finance team at 
-              <a href="mailto:finance@lambdaempire.org" className="text-blue-600 hover:underline ml-1">
-                finance@lambdaempire.org
-              </a>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
