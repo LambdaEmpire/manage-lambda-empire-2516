@@ -9,6 +9,8 @@ import LoadingSpinner from './components/LoadingSpinner';
 // Lazy load components for better performance
 const Index = lazy(() => import('./pages/Index'));
 const Login = lazy(() => import('./pages/Login'));
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+const SuperAdminSetup = lazy(() => import('./pages/SuperAdminSetup'));
 const AdminCreation = lazy(() => import('./pages/AdminCreation'));
 const MemberDashboard = lazy(() => import('./pages/MemberDashboard'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
@@ -53,6 +55,8 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<Login />} />
+                  <Route path="/admin-login" element={<AdminLogin />} />
+                  <Route path="/super-admin-setup" element={<SuperAdminSetup />} />
                   <Route path="/admin-creation" element={<AdminCreation />} />
                   <Route path="/member-dashboard" element={<MemberDashboard />} />
                   <Route path="/admin-dashboard" element={<AdminDashboard />} />

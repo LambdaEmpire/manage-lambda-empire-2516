@@ -7,9 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Mail, Lock, Crown } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Crown, Shield, ArrowLeft, User } from 'lucide-react';
 
-export default function Login() {
+export default function SuperAdminSetup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -18,31 +18,43 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [isSignupMode, setIsSignupMode] = useState(false);
+  const [isFirstSuperAdmin, setIsFirstSuperAdmin] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check for existing session on mount
+  // Check for existing session and super admin status
   useEffect(() => {
     let mounted = true;
     
-    const checkSession = async () => {
+    const checkStatus = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session && mounted) {
-          navigate('/');
+          navigate('/admin-dashboard');
+          return;
+        }
+
+        // Check if this is the first super admin setup
+        const { data: existingProfiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('is_super_admin', true)
+          .limit(1);
+
+        if (mounted) {
+          setIsFirstSuperAdmin(!existingProfiles || existingProfiles.length === 0);
         }
       } catch (error) {
-        console.error('Session check error:', error);
+        console.error('Status check error:', error);
       }
     };
 
-    checkSession();
+    checkStatus();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session && mounted) {
-        navigate('/');
+        navigate('/admin-dashboard');
       }
     });
 
@@ -52,34 +64,7 @@ export default function Login() {
     };
   }, [navigate]);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      if (data.user) {
-        toast({
-          title: "Welcome back!",
-          description: "Successfully logged in.",
-        });
-        navigate('/');
-      }
-    } catch (error: any) {
-      setError(error.message || 'Login failed');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSuperAdminSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
@@ -91,33 +76,70 @@ export default function Login() {
     }
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            phone: phone,
+      if (isFirstSuperAdmin) {
+        // Create first super admin with auto-approval
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              first_name: firstName,
+              last_name: lastName,
+              phone: phone,
+              is_super_admin: true,
+              can_approve_members: true
+            }
           }
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.user) {
-        toast({
-          title: "Account created!",
-          description: "Please check your email to verify your account.",
         });
-        setIsSignupMode(false);
-        setPassword('');
-        setFirstName('');
-        setLastName('');
-        setPhone('');
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+          // Auto-login the first super admin
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+          if (signInError) throw signInError;
+
+          toast({
+            title: "Super Admin Created!",
+            description: "First super admin account created and logged in.",
+          });
+          navigate('/admin-dashboard');
+        }
+      } else {
+        // Regular super admin login
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          // Verify super admin privileges
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('is_super_admin, can_approve_members, first_name, last_name')
+            .eq('id', data.user.id)
+            .single();
+
+          if (!profile?.is_super_admin && !profile?.can_approve_members) {
+            await supabase.auth.signOut();
+            throw new Error('Super admin privileges required');
+          }
+
+          toast({
+            title: "Super Admin Access",
+            description: `Welcome, ${profile.first_name} ${profile.last_name}!`,
+          });
+          navigate('/admin-dashboard');
+        }
       }
     } catch (error: any) {
-      setError(error.message || 'Signup failed');
+      setError(error.message || 'Super admin setup failed');
     } finally {
       setIsLoading(false);
     }
@@ -131,20 +153,25 @@ export default function Login() {
           <div className="flex items-center justify-center space-x-2">
             <Crown className="h-8 w-8 text-purple-600" />
             <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              Lambda Empire
+              Super Admin
             </h1>
           </div>
-          <p className="text-gray-600">Member Management System</p>
+          <p className="text-gray-600">
+            {isFirstSuperAdmin ? 'Initial Setup' : 'Access Portal'}
+          </p>
         </div>
 
-        {/* Main Login Card */}
+        {/* Super Admin Setup Card */}
         <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-2xl text-center">
-              {isSignupMode ? 'Create Account' : 'Welcome Back'}
+              {isFirstSuperAdmin ? 'Create Super Admin' : 'Super Admin Login'}
             </CardTitle>
             <CardDescription className="text-center">
-              {isSignupMode ? 'Create your member account' : 'Sign in to your account'}
+              {isFirstSuperAdmin 
+                ? 'Set up the first super administrator account' 
+                : 'Sign in with super admin credentials'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -154,8 +181,18 @@ export default function Login() {
               </Alert>
             )}
 
-            <form onSubmit={isSignupMode ? handleSignup : handleLogin} className="space-y-4">
-              {isSignupMode && (
+            <Alert className="mb-4 border-purple-200 bg-purple-50">
+              <Crown className="h-4 w-4 text-purple-600" />
+              <AlertDescription className="text-purple-800">
+                <strong>Super Admin:</strong> {isFirstSuperAdmin 
+                  ? 'First super admin will be auto-approved' 
+                  : 'Highest level administrative access'
+                }
+              </AlertDescription>
+            </Alert>
+
+            <form onSubmit={handleSuperAdminSetup} className="space-y-4">
+              {isFirstSuperAdmin && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name</Label>
@@ -189,7 +226,7 @@ export default function Login() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder="superadmin@lambdaempire.org"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
@@ -198,9 +235,9 @@ export default function Login() {
                 </div>
               </div>
 
-              {isSignupMode && (
+              {isFirstSuperAdmin && (
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone (optional)</Label>
+                  <Label htmlFor="phone">Phone</Label>
                   <Input
                     id="phone"
                     type="tel"
@@ -218,7 +255,7 @@ export default function Login() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder={isSignupMode ? "Create a password" : "Enter your password"}
+                    placeholder={isFirstSuperAdmin ? "Create password" : "Enter password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 pr-10"
@@ -234,56 +271,29 @@ export default function Login() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600" 
+                disabled={isLoading}
+              >
                 {isLoading 
                   ? 'Processing...' 
-                  : isSignupMode 
-                    ? 'Create Account' 
-                    : 'Sign In'
+                  : isFirstSuperAdmin 
+                    ? 'Create Super Admin' 
+                    : 'Super Admin Sign In'
                 }
               </Button>
 
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsSignupMode(!isSignupMode);
-                    setError('');
-                  }}
-                  className="text-sm text-purple-600 hover:text-purple-800 transition-colors"
-                >
-                  {isSignupMode 
-                    ? 'Already have an account? Sign in' 
-                    : "Don't have an account? Sign up"
-                  }
-                </button>
-              </div>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                className="w-full" 
+                onClick={() => navigate('/login')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Member Login
+              </Button>
             </form>
-
-            {/* Admin Login Links */}
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <div className="text-center space-y-2">
-                <p className="text-sm text-gray-500">Administrative Access</p>
-                <div className="flex flex-col space-y-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/admin-login')}
-                    className="text-xs"
-                  >
-                    Admin Login
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/super-admin-setup')}
-                    className="text-xs"
-                  >
-                    Super Admin Setup
-                  </Button>
-                </div>
-              </div>
-            </div>
           </CardContent>
         </Card>
 
