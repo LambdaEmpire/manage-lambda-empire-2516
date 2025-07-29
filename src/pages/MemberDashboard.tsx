@@ -2,26 +2,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { 
-  DollarSign, 
-  Calendar, 
-  Clock, 
-  GraduationCap, 
+import {
+  DollarSign,
+  Calendar,
+  Clock,
+  GraduationCap,
   TrendingUp,
   CheckCircle,
   AlertCircle,
   Users
 } from 'lucide-react';
+import { useOptimizedAuth } from '@/hooks/useOptimizedAuth'; // Import useOptimizedAuth
 
 export default function MemberDashboard() {
+  const { user } = useOptimizedAuth(); // Get user from useOptimizedAuth
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-lambda-purple to-lambda-gold p-6 rounded-xl text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Welcome back, John!</h1>
-            <p className="text-white/90 mt-1">Member ID: LEM001234 • Chapter Level</p>
+            <h1 className="text-2xl md:text-3xl font-bold">Welcome back, {user?.first_name || 'Member'}!</h1>
+            <p className="text-white/90 mt-1">Member ID: {user?.id ? user.id.substring(0, 8) : 'N/A'} • Chapter Level</p>
           </div>
           <div className="hidden md:block">
             <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
