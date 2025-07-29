@@ -7,104 +7,114 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Mail, Lock, Crown, Shield, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Shield, Crown, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function AdminLogin() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check for existing session on mount
+  const [loginForm, setLoginForm] = useState({
+    email: '',
+    password: ''
+  });
+
   useEffect(() => {
-    let mounted = true;
-    
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && mounted) {
+    // Check if user is already logged in
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Check if user is admin
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('can_approve_members, is_super_admin')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.can_approve_members || profile?.is_super_admin) {
           navigate('/admin-dashboard');
+        } else {
+          navigate('/');
         }
-      } catch (error) {
-        console.error('Session check error:', error);
       }
     };
-
-    checkSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && mounted) {
-        navigate('/admin-dashboard');
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    checkUser();
   }, [navigate]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: loginForm.email,
+        password: loginForm.password,
       });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       if (data.user) {
-        // Verify admin privileges
-        const { data: profile } = await supabase
+        // Check if user has admin privileges
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('is_super_admin, can_approve_members, first_name, last_name')
+          .select('can_approve_members, is_super_admin, first_name, last_name')
           .eq('id', data.user.id)
           .single();
 
-        if (!profile?.is_super_admin && !profile?.can_approve_members) {
-          await supabase.auth.signOut();
-          throw new Error('Admin privileges required');
+        if (profileError) {
+          throw new Error('Unable to verify admin privileges');
         }
 
+        if (!profile?.can_approve_members && !profile?.is_super_admin) {
+          // User is not an admin
+          await supabase.auth.signOut();
+          throw new Error('Access denied. Admin privileges required.');
+        }
+
+        // Success - user is an admin
         toast({
           title: "Admin Access Granted",
-          description: `Welcome, ${profile.first_name} ${profile.last_name}!`,
+          description: `Welcome back, ${profile.first_name} ${profile.last_name}!`,
         });
+        
         navigate('/admin-dashboard');
       }
     } catch (error: any) {
-      setError(error.message || 'Admin login failed');
+      console.error('Admin login error:', error);
+      setError(error.message || 'An error occurred during admin login');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center space-x-2">
             <Shield className="h-8 w-8 text-purple-600" />
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              Admin Portal
-            </h1>
+            <Crown className="h-6 w-6 text-blue-600" />
           </div>
-          <p className="text-gray-600">Administrative Access</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            Admin Portal
+          </h1>
+          <p className="text-gray-600">Lambda Empire Administrative Access</p>
         </div>
 
         {/* Admin Login Card */}
-        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+        <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl text-center">Admin Login</CardTitle>
+            <CardTitle className="text-2xl text-center flex items-center justify-center gap-2">
+              <Shield className="h-6 w-6 text-purple-600" />
+              Admin Login
+            </CardTitle>
             <CardDescription className="text-center">
               Sign in with your administrator credentials
             </CardDescription>
@@ -116,40 +126,41 @@ export default function AdminLogin() {
               </Alert>
             )}
 
-            <Alert className="mb-4 border-amber-200 bg-amber-50">
-              <Shield className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-800">
-                <strong>Admin Access:</strong> Requires administrator privileges
+            {/* Admin Access Notice */}
+            <Alert className="mb-4 border-purple-200 bg-purple-50">
+              <Shield className="h-4 w-4 text-purple-600" />
+              <AlertDescription className="text-purple-800">
+                <strong>Admin Access Required:</strong> Only authorized administrators can access this portal.
               </AlertDescription>
             </Alert>
 
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleAdminLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="admin-email">Administrator Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    id="email"
+                    id="admin-email"
                     type="email"
                     placeholder="admin@lambdaempire.org"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={loginForm.email}
+                    onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
                     className="pl-10"
                     required
                   />
                 </div>
               </div>
-
+              
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="admin-password">Password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    id="password"
+                    id="admin-password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter admin password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your admin password"
+                    value={loginForm.password}
+                    onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
                     className="pl-10 pr-10"
                     required
                   />
@@ -163,26 +174,33 @@ export default function AdminLogin() {
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600" 
-                disabled={isLoading}
-              >
-                {isLoading ? 'Verifying...' : 'Admin Sign In'}
-              </Button>
-
-              <Button 
-                type="button" 
-                variant="ghost" 
-                className="w-full" 
-                onClick={() => navigate('/login')}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Member Login
-              </Button>
+              <div className="pt-4">
+                <Button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" 
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Verifying Admin Access...' : 'Sign In as Administrator'}
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
+
+        {/* Navigation Links */}
+        <div className="text-center space-y-2">
+          <Link 
+            to="/login"
+            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-800 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back to Member Login
+          </Link>
+          
+          <div className="text-xs text-gray-500">
+            Need admin access? Contact your Super Administrator
+          </div>
+        </div>
 
         {/* Footer */}
         <div className="text-center text-sm text-gray-500">

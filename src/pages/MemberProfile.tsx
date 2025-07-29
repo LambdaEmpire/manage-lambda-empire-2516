@@ -268,7 +268,7 @@ const MemberProfile = () => {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6 animate-fade-in">
+      <div className="p-6 space-y-6">
         <div className="animate-pulse space-y-6">
           <div className="flex items-center space-x-4">
             <div className="w-24 h-24 bg-gray-200 rounded-full"></div>
@@ -292,7 +292,7 @@ const MemberProfile = () => {
 
   if (!profile) {
     return (
-      <div className="p-6 animate-fade-in">
+      <div className="p-6">
         <Card>
           <CardContent className="p-6 text-center">
             <p className="text-gray-500">Member profile not found</p>
@@ -303,7 +303,7 @@ const MemberProfile = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
+    <div className="p-6 space-y-6">
       {/* Profile Header */}
       <Card>
         <CardContent className="p-6">

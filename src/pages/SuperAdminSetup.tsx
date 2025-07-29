@@ -7,171 +7,231 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Mail, Lock, Crown, Shield, ArrowLeft, User } from 'lucide-react';
+import { Crown, Shield, Eye, EyeOff, Mail, Lock, User, Phone, MapPin } from 'lucide-react';
 
 export default function SuperAdminSetup() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [isFirstSuperAdmin, setIsFirstSuperAdmin] = useState(false);
+  const [checkingExistingAdmin, setCheckingExistingAdmin] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check for existing session and super admin status
+  const [setupForm, setSetupForm] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    organization: 'Lambda Empire'
+  });
+
   useEffect(() => {
-    let mounted = true;
-    
-    const checkStatus = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && mounted) {
-          navigate('/admin-dashboard');
-          return;
-        }
+    checkForExistingAdmin();
+  }, []);
 
-        // Check if this is the first super admin setup
-        const { data: existingProfiles } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('is_super_admin', true)
-          .limit(1);
+  const checkForExistingAdmin = async () => {
+    try {
+      // Check if there are any existing users with admin roles
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, can_approve_members')
+        .eq('can_approve_members', true)
+        .limit(1);
 
-        if (mounted) {
-          setIsFirstSuperAdmin(!existingProfiles || existingProfiles.length === 0);
-        }
-      } catch (error) {
-        console.error('Status check error:', error);
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking for existing admin:', error);
       }
-    };
 
-    checkStatus();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && mounted) {
-        navigate('/admin-dashboard');
+      // If there are existing admins, redirect to login
+      if (profiles && profiles.length > 0) {
+        toast({
+          title: "Setup Already Complete",
+          description: "Super admin has already been set up. Please use the login page.",
+          variant: "destructive"
+        });
+        navigate('/login');
+        return;
       }
-    });
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [navigate]);
+      setCheckingExistingAdmin(false);
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      setCheckingExistingAdmin(false);
+    }
+  };
 
-  const handleSuperAdminSetup = async (e: React.FormEvent) => {
+  const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (setupForm.password !== setupForm.confirmPassword) {
+      setError('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+
+    if (setupForm.password.length < 8) {
+      setError('Password must be at least 8 characters long');
       setIsLoading(false);
       return;
     }
 
     try {
-      if (isFirstSuperAdmin) {
-        // Create first super admin with auto-approval
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email,
-          password,
+      // Create the super admin user with email confirmation disabled for first admin
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: setupForm.email,
+        password: setupForm.password,
+        email_confirm: true, // Auto-confirm email for first super admin
+        user_metadata: {
+          first_name: setupForm.firstName,
+          last_name: setupForm.lastName,
+          phone: setupForm.phone,
+          organization: setupForm.organization,
+          is_super_admin: true,
+          can_approve_members: true
+        }
+      });
+
+      if (authError) {
+        // If admin.createUser fails, fall back to regular signup
+        console.log('Admin create failed, trying regular signup:', authError);
+        
+        const { data: fallbackData, error: fallbackError } = await supabase.auth.signUp({
+          email: setupForm.email,
+          password: setupForm.password,
           options: {
             data: {
-              first_name: firstName,
-              last_name: lastName,
-              phone: phone,
+              first_name: setupForm.firstName,
+              last_name: setupForm.lastName,
+              phone: setupForm.phone,
+              organization: setupForm.organization,
               is_super_admin: true,
               can_approve_members: true
             }
           }
         });
 
-        if (authError) throw authError;
-
-        if (authData.user) {
-          // Auto-login the first super admin
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-
-          if (signInError) throw signInError;
-
-          toast({
-            title: "Super Admin Created!",
-            description: "First super admin account created and logged in.",
-          });
-          navigate('/admin-dashboard');
+        if (fallbackError) {
+          throw fallbackError;
         }
-      } else {
-        // Regular super admin login
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
 
-        if (error) throw error;
-
-        if (data.user) {
-          // Verify super admin privileges
-          const { data: profile } = await supabase
+        if (fallbackData.user) {
+          // Create profile with admin privileges
+          const { error: profileError } = await supabase
             .from('profiles')
-            .select('is_super_admin, can_approve_members, first_name, last_name')
-            .eq('id', data.user.id)
-            .single();
+            .insert({
+              id: fallbackData.user.id,
+              first_name: setupForm.firstName,
+              last_name: setupForm.lastName,
+              phone: setupForm.phone,
+              organization: setupForm.organization,
+              can_approve_members: true,
+              is_super_admin: true,
+              created_at: new Date().toISOString()
+            });
 
-          if (!profile?.is_super_admin && !profile?.can_approve_members) {
-            await supabase.auth.signOut();
-            throw new Error('Super admin privileges required');
+          if (profileError) {
+            console.error('Profile creation error:', profileError);
           }
 
           toast({
-            title: "Super Admin Access",
-            description: `Welcome, ${profile.first_name} ${profile.last_name}!`,
+            title: "Super Admin Created!",
+            description: "Your super admin account has been set up successfully. Please check your email to verify your account, then you can log in.",
           });
-          navigate('/admin-dashboard');
+
+          navigate('/login');
+          return;
+        }
+      }
+
+      if (authData.user) {
+        // Create profile with admin privileges for admin-created user
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: authData.user.id,
+            first_name: setupForm.firstName,
+            last_name: setupForm.lastName,
+            phone: setupForm.phone,
+            organization: setupForm.organization,
+            can_approve_members: true,
+            is_super_admin: true,
+            created_at: new Date().toISOString()
+          });
+
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+        }
+
+        // Automatically sign in the super admin
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: setupForm.email,
+          password: setupForm.password,
+        });
+
+        if (signInError) {
+          console.error('Auto sign-in error:', signInError);
+          toast({
+            title: "Super Admin Created!",
+            description: "Your super admin account has been set up successfully. Please log in to continue.",
+          });
+          navigate('/login');
+        } else {
+          toast({
+            title: "Welcome, Super Admin!",
+            description: "Your account has been created and you are now logged in with full administrative privileges.",
+          });
+          navigate('/');
         }
       }
     } catch (error: any) {
-      setError(error.message || 'Super admin setup failed');
+      console.error('Setup error:', error);
+      setError(error.message || 'An error occurred during setup');
     } finally {
       setIsLoading(false);
     }
   };
 
+  if (checkingExistingAdmin) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Checking system status...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-lg space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center space-x-2">
-            <Crown className="h-8 w-8 text-purple-600" />
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              Super Admin
-            </h1>
+            <Crown className="h-10 w-10 text-purple-600" />
+            <Shield className="h-8 w-8 text-blue-600" />
           </div>
-          <p className="text-gray-600">
-            {isFirstSuperAdmin ? 'Initial Setup' : 'Access Portal'}
-          </p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            Super Admin Setup
+          </h1>
+          <p className="text-gray-600">Create the first administrator account for Lambda Empire</p>
         </div>
 
-        {/* Super Admin Setup Card */}
-        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+        {/* Setup Card */}
+        <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl text-center">
-              {isFirstSuperAdmin ? 'Create Super Admin' : 'Super Admin Login'}
+            <CardTitle className="text-2xl text-center flex items-center justify-center gap-2">
+              <Shield className="h-6 w-6 text-purple-600" />
+              First Time Setup
             </CardTitle>
             <CardDescription className="text-center">
-              {isFirstSuperAdmin 
-                ? 'Set up the first super administrator account' 
-                : 'Sign in with super admin credentials'
-              }
+              This account will have full administrative privileges and immediate access
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -181,83 +241,104 @@ export default function SuperAdminSetup() {
               </Alert>
             )}
 
-            <Alert className="mb-4 border-purple-200 bg-purple-50">
-              <Crown className="h-4 w-4 text-purple-600" />
-              <AlertDescription className="text-purple-800">
-                <strong>Super Admin:</strong> {isFirstSuperAdmin 
-                  ? 'First super admin will be auto-approved' 
-                  : 'Highest level administrative access'
-                }
+            {/* Info Alert */}
+            <Alert className="mb-4 border-blue-200 bg-blue-50">
+              <Shield className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                <strong>First Super Admin:</strong> Your account will be automatically approved with full system access. No email verification required.
               </AlertDescription>
             </Alert>
 
-            <form onSubmit={handleSuperAdminSetup} className="space-y-4">
-              {isFirstSuperAdmin && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
+            <form onSubmit={handleSetup} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name *</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
                       id="firstName"
                       type="text"
                       placeholder="First name"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      type="text"
-                      placeholder="Last name"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
+                      value={setupForm.firstName}
+                      onChange={(e) => setSetupForm({ ...setupForm, firstName: e.target.value })}
+                      className="pl-10"
                       required
                     />
                   </div>
                 </div>
-              )}
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name *</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="lastName"
+                      type="text"
+                      placeholder="Last name"
+                      value={setupForm.lastName}
+                      onChange={(e) => setSetupForm({ ...setupForm, lastName: e.target.value })}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email Address *</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     id="email"
                     type="email"
-                    placeholder="superadmin@lambdaempire.org"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="admin@lambdaempire.org"
+                    value={setupForm.email}
+                    onChange={(e) => setSetupForm({ ...setupForm, email: e.target.value })}
                     className="pl-10"
                     required
                   />
                 </div>
               </div>
 
-              {isFirstSuperAdmin && (
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     id="phone"
                     type="tel"
-                    placeholder="Phone number"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="(555) 123-4567"
+                    value={setupForm.phone}
+                    onChange={(e) => setSetupForm({ ...setupForm, phone: e.target.value })}
+                    className="pl-10"
                   />
                 </div>
-              )}
+              </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="organization">Organization</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="organization"
+                    type="text"
+                    value={setupForm.organization}
+                    onChange={(e) => setSetupForm({ ...setupForm, organization: e.target.value })}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password *</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder={isFirstSuperAdmin ? "Create password" : "Enter password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Create a strong password"
+                    value={setupForm.password}
+                    onChange={(e) => setSetupForm({ ...setupForm, password: e.target.value })}
                     className="pl-10 pr-10"
                     required
                   />
@@ -269,33 +350,48 @@ export default function SuperAdminSetup() {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                <p className="text-xs text-gray-500">Must be at least 8 characters long</p>
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600" 
-                disabled={isLoading}
-              >
-                {isLoading 
-                  ? 'Processing...' 
-                  : isFirstSuperAdmin 
-                    ? 'Create Super Admin' 
-                    : 'Super Admin Sign In'
-                }
-              </Button>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="confirmPassword"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Confirm your password"
+                    value={setupForm.confirmPassword}
+                    onChange={(e) => setSetupForm({ ...setupForm, confirmPassword: e.target.value })}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
 
-              <Button 
-                type="button" 
-                variant="ghost" 
-                className="w-full" 
-                onClick={() => navigate('/login')}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Member Login
-              </Button>
+              <div className="pt-4">
+                <Button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" 
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Creating Super Admin...' : 'Create Super Admin & Login'}
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
+
+        {/* Back to Login */}
+        <div className="text-center">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate('/login')}
+            className="text-gray-600 hover:text-gray-800"
+          >
+            ← Back to Login
+          </Button>
+        </div>
 
         {/* Footer */}
         <div className="text-center text-sm text-gray-500">

@@ -5,51 +5,44 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Mail, Lock, Crown } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Crown, Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [isSignupMode, setIsSignupMode] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check for existing session on mount
+  // Login form state
+  const [loginForm, setLoginForm] = useState({
+    email: '',
+    password: ''
+  });
+
+  // Signup form state
+  const [signupForm, setSignupForm] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    firstName: '',
+    lastName: '',
+    phone: ''
+  });
+
   useEffect(() => {
-    let mounted = true;
-    
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && mounted) {
-          navigate('/');
-        }
-      } catch (error) {
-        console.error('Session check error:', error);
-      }
-    };
-
-    checkSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && mounted) {
+    // Check if user is already logged in
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
         navigate('/');
       }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
     };
+    checkUser();
   }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -59,21 +52,24 @@ export default function Login() {
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: loginForm.email,
+        password: loginForm.password,
       });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       if (data.user) {
         toast({
           title: "Welcome back!",
-          description: "Successfully logged in.",
+          description: "You have successfully logged in.",
         });
         navigate('/');
       }
     } catch (error: any) {
-      setError(error.message || 'Login failed');
+      console.error('Login error:', error);
+      setError(error.message || 'An error occurred during login');
     } finally {
       setIsLoading(false);
     }
@@ -84,40 +80,47 @@ export default function Login() {
     setIsLoading(true);
     setError('');
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (signupForm.password !== signupForm.confirmPassword) {
+      setError('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+
+    if (signupForm.password.length < 6) {
+      setError('Password must be at least 6 characters long');
       setIsLoading(false);
       return;
     }
 
     try {
       const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+        email: signupForm.email,
+        password: signupForm.password,
         options: {
           data: {
-            first_name: firstName,
-            last_name: lastName,
-            phone: phone,
+            first_name: signupForm.firstName,
+            last_name: signupForm.lastName,
+            phone: signupForm.phone,
           }
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       if (data.user) {
         toast({
           title: "Account created!",
           description: "Please check your email to verify your account.",
         });
-        setIsSignupMode(false);
-        setPassword('');
-        setFirstName('');
-        setLastName('');
-        setPhone('');
+        
+        // Switch to login tab
+        setLoginForm({ email: signupForm.email, password: '' });
       }
     } catch (error: any) {
-      setError(error.message || 'Signup failed');
+      console.error('Signup error:', error);
+      setError(error.message || 'An error occurred during signup');
     } finally {
       setIsLoading(false);
     }
@@ -137,152 +140,195 @@ export default function Login() {
           <p className="text-gray-600">Member Management System</p>
         </div>
 
-        {/* Main Login Card */}
+        {/* Login/Signup Card */}
         <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl text-center">
-              {isSignupMode ? 'Create Account' : 'Welcome Back'}
-            </CardTitle>
+            <CardTitle className="text-2xl text-center">Welcome</CardTitle>
             <CardDescription className="text-center">
-              {isSignupMode ? 'Create your member account' : 'Sign in to your account'}
+              Sign in to your account or create a new one
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+            <Tabs defaultValue="login" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Login
+                </TabsTrigger>
+                <TabsTrigger value="signup" className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Sign Up
+                </TabsTrigger>
+              </TabsList>
 
-            <form onSubmit={isSignupMode ? handleSignup : handleLogin} className="space-y-4">
-              {isSignupMode && (
-                <div className="grid grid-cols-2 gap-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <TabsContent value="login" className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
+                    <Label htmlFor="login-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="login-email"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={loginForm.email}
+                        onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="login-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={loginForm.password}
+                        onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                        className="pl-10 pr-10"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? 'Signing in...' : 'Sign In'}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="signup" className="space-y-4">
+                <form onSubmit={handleSignup} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-firstName">First Name</Label>
+                      <Input
+                        id="signup-firstName"
+                        type="text"
+                        placeholder="First name"
+                        value={signupForm.firstName}
+                        onChange={(e) => setSignupForm({ ...signupForm, firstName: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-lastName">Last Name</Label>
+                      <Input
+                        id="signup-lastName"
+                        type="text"
+                        placeholder="Last name"
+                        value={signupForm.lastName}
+                        onChange={(e) => setSignupForm({ ...signupForm, lastName: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={signupForm.email}
+                        onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-phone">Phone (optional)</Label>
                     <Input
-                      id="firstName"
-                      type="text"
-                      placeholder="First name"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      required
+                      id="signup-phone"
+                      type="tel"
+                      placeholder="Phone number"
+                      value={signupForm.phone}
+                      onChange={(e) => setSignupForm({ ...signupForm, phone: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      type="text"
-                      placeholder="Last name"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      required
-                    />
+                    <Label htmlFor="signup-password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="signup-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Create a password"
+                        value={signupForm.password}
+                        onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })}
+                        className="pl-10 pr-10"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-confirmPassword">Confirm Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="signup-confirmPassword"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Confirm your password"
+                        value={signupForm.confirmPassword}
+                        onChange={(e) => setSignupForm({ ...signupForm, confirmPassword: e.target.value })}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? 'Creating account...' : 'Create Account'}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              {isSignupMode && (
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone (optional)</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="Phone number"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder={isSignupMode ? "Create a password" : "Enter your password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+        {/* Admin Access */}
+        <Card className="shadow-lg border-0 bg-gradient-to-r from-purple-500 to-blue-600 text-white">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Shield className="h-6 w-6" />
+                <div>
+                  <h3 className="font-semibold">Administrator?</h3>
+                  <p className="text-sm text-white/80">Access the admin portal</p>
                 </div>
               </div>
-
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading 
-                  ? 'Processing...' 
-                  : isSignupMode 
-                    ? 'Create Account' 
-                    : 'Sign In'
-                }
-              </Button>
-
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsSignupMode(!isSignupMode);
-                    setError('');
-                  }}
-                  className="text-sm text-purple-600 hover:text-purple-800 transition-colors"
+              <Link to="/admin-login">
+                <Button 
+                  variant="secondary"
+                  size="sm"
+                  className="bg-white/20 hover:bg-white/30 text-white border-white/30"
                 >
-                  {isSignupMode 
-                    ? 'Already have an account? Sign in' 
-                    : "Don't have an account? Sign up"
-                  }
-                </button>
-              </div>
-            </form>
-
-            {/* Admin Login Links */}
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <div className="text-center space-y-2">
-                <p className="text-sm text-gray-500">Administrative Access</p>
-                <div className="flex flex-col space-y-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/admin-login')}
-                    className="text-xs"
-                  >
-                    Admin Login
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/super-admin-setup')}
-                    className="text-xs"
-                  >
-                    Super Admin Setup
-                  </Button>
-                </div>
-              </div>
+                  Admin Login
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
