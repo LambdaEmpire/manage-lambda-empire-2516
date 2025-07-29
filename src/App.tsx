@@ -9,8 +9,6 @@ import LoadingSpinner from './components/LoadingSpinner';
 // Lazy load components for better performance
 const Index = lazy(() => import('./pages/Index'));
 const Login = lazy(() => import('./pages/Login'));
-const AdminLogin = lazy(() => import('./pages/AdminLogin'));
-const SuperAdminSetup = lazy(() => import('./pages/SuperAdminSetup'));
 const AdminCreation = lazy(() => import('./pages/AdminCreation'));
 const MemberDashboard = lazy(() => import('./pages/MemberDashboard'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
@@ -37,7 +35,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (updated from cacheTime)
       retry: 1,
       refetchOnWindowFocus: false,
     },
@@ -55,8 +53,6 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<Login />} />
-                  <Route path="/admin-login" element={<AdminLogin />} />
-                  <Route path="/super-admin-setup" element={<SuperAdminSetup />} />
                   <Route path="/admin-creation" element={<AdminCreation />} />
                   <Route path="/member-dashboard" element={<MemberDashboard />} />
                   <Route path="/admin-dashboard" element={<AdminDashboard />} />

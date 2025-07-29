@@ -1,49 +1,84 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Mail, Lock, User, Crown, Shield } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [showSuperAdminLogin, setShowSuperAdminLogin] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Login form state
-  const [loginForm, setLoginForm] = useState({
-    email: '',
-    password: ''
-  });
-
-  // Signup form state
-  const [signupForm, setSignupForm] = useState({
+  // Single form state for better performance
+  const [formData, setFormData] = useState({
     email: '',
     password: '',
-    confirmPassword: '',
     firstName: '',
     lastName: '',
     phone: ''
   });
 
+  const [isSignupMode, setIsSignupMode] = useState(false);
+
+  // Memoized form update function
+  const updateForm = useCallback((field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  // Check for existing session on mount
   useEffect(() => {
-    // Check if user is already logged in
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        navigate('/');
+    let mounted = true;
+    
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && mounted) {
+          navigate('/');
+        }
+      } catch (error) {
+        console.error('Session check error:', error);
       }
     };
-    checkUser();
+
+    checkSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && mounted) {
+        navigate('/');
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
+
+  // Hidden super admin access (Ctrl+Shift+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+        e.preventDefault();
+        setShowSuperAdminLogin(true);
+        toast({
+          title: "Super Admin Mode",
+          description: "Super admin login activated",
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,24 +87,105 @@ export default function Login() {
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginForm.email,
-        password: loginForm.password,
+        email: formData.email,
+        password: formData.password,
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (data.user) {
         toast({
           title: "Welcome back!",
-          description: "You have successfully logged in.",
+          description: "Successfully logged in.",
         });
         navigate('/');
       }
     } catch (error: any) {
-      console.error('Login error:', error);
-      setError(error.message || 'An error occurred during login');
+      setError(error.message || 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSuperAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // Check if this is the first super admin setup
+      const { data: existingProfiles } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('is_super_admin', true)
+        .limit(1);
+
+      const isFirstSuperAdmin = !existingProfiles || existingProfiles.length === 0;
+
+      if (isFirstSuperAdmin) {
+        // Create first super admin with auto-approval
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              phone: formData.phone,
+              is_super_admin: true,
+              can_approve_members: true
+            }
+          }
+        });
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+          // Auto-login the first super admin
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: formData.email,
+            password: formData.password,
+          });
+
+          if (signInError) throw signInError;
+
+          toast({
+            title: "Super Admin Created!",
+            description: "First super admin account created and logged in.",
+          });
+          navigate('/admin-dashboard');
+        }
+      } else {
+        // Regular super admin login
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          // Verify super admin privileges
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('is_super_admin, can_approve_members, first_name, last_name')
+            .eq('id', data.user.id)
+            .single();
+
+          if (!profile?.is_super_admin && !profile?.can_approve_members) {
+            await supabase.auth.signOut();
+            throw new Error('Super admin privileges required');
+          }
+
+          toast({
+            title: "Super Admin Access",
+            description: `Welcome, ${profile.first_name} ${profile.last_name}!`,
+          });
+          navigate('/admin-dashboard');
+        }
+      }
+    } catch (error: any) {
+      setError(error.message || 'Super admin login failed');
     } finally {
       setIsLoading(false);
     }
@@ -80,47 +196,37 @@ export default function Login() {
     setIsLoading(true);
     setError('');
 
-    if (signupForm.password !== signupForm.confirmPassword) {
-      setError('Passwords do not match');
-      setIsLoading(false);
-      return;
-    }
-
-    if (signupForm.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
       setIsLoading(false);
       return;
     }
 
     try {
       const { data, error } = await supabase.auth.signUp({
-        email: signupForm.email,
-        password: signupForm.password,
+        email: formData.email,
+        password: formData.password,
         options: {
           data: {
-            first_name: signupForm.firstName,
-            last_name: signupForm.lastName,
-            phone: signupForm.phone,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
           }
         }
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (data.user) {
         toast({
           title: "Account created!",
           description: "Please check your email to verify your account.",
         });
-        
-        // Switch to login tab
-        setLoginForm({ email: signupForm.email, password: '' });
+        setIsSignupMode(false);
+        setFormData(prev => ({ ...prev, password: '', firstName: '', lastName: '', phone: '' }));
       }
     } catch (error: any) {
-      console.error('Signup error:', error);
-      setError(error.message || 'An error occurred during signup');
+      setError(error.message || 'Signup failed');
     } finally {
       setIsLoading(false);
     }
@@ -140,198 +246,245 @@ export default function Login() {
           <p className="text-gray-600">Member Management System</p>
         </div>
 
-        {/* Login/Signup Card */}
+        {/* Main Login Card */}
         <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl text-center">Welcome</CardTitle>
+            <CardTitle className="text-2xl text-center">
+              {showSuperAdminLogin ? 'Super Admin Access' : 'Welcome'}
+            </CardTitle>
             <CardDescription className="text-center">
-              Sign in to your account or create a new one
+              {showSuperAdminLogin 
+                ? 'Super administrator login' 
+                : isSignupMode 
+                  ? 'Create your member account' 
+                  : 'Sign in to your account'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Login
-                </TabsTrigger>
-                <TabsTrigger value="signup" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Sign Up
-                </TabsTrigger>
-              </TabsList>
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
+            {showSuperAdminLogin ? (
+              <form onSubmit={handleSuperAdminLogin} className="space-y-4">
+                <Alert className="border-purple-200 bg-purple-50">
+                  <Shield className="h-4 w-4 text-purple-600" />
+                  <AlertDescription className="text-purple-800">
+                    <strong>Super Admin Mode:</strong> First super admin will be auto-approved
+                  </AlertDescription>
                 </Alert>
-              )}
 
-              <TabsContent value="login" className="space-y-4">
-                <form onSubmit={handleLogin} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="login-email"
-                        type="email"
-                        placeholder="Enter your email"
-                        value={loginForm.email}
-                        onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="login-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Enter your password"
-                        value={loginForm.password}
-                        onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                        className="pl-10 pr-10"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Signing in...' : 'Sign In'}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="signup" className="space-y-4">
-                <form onSubmit={handleSignup} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-firstName">First Name</Label>
-                      <Input
-                        id="signup-firstName"
-                        type="text"
-                        placeholder="First name"
-                        value={signupForm.firstName}
-                        onChange={(e) => setSignupForm({ ...signupForm, firstName: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-lastName">Last Name</Label>
-                      <Input
-                        id="signup-lastName"
-                        type="text"
-                        placeholder="Last name"
-                        value={signupForm.lastName}
-                        onChange={(e) => setSignupForm({ ...signupForm, lastName: e.target.value })}
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="signup-email"
-                        type="email"
-                        placeholder="Enter your email"
-                        value={signupForm.email}
-                        onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-phone">Phone (optional)</Label>
+                    <Label htmlFor="firstName">First Name</Label>
                     <Input
-                      id="signup-phone"
-                      type="tel"
-                      placeholder="Phone number"
-                      value={signupForm.phone}
-                      onChange={(e) => setSignupForm({ ...signupForm, phone: e.target.value })}
+                      id="firstName"
+                      type="text"
+                      placeholder="First name"
+                      value={formData.firstName}
+                      onChange={(e) => updateForm('firstName', e.target.value)}
+                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      type="text"
+                      placeholder="Last name"
+                      value={formData.lastName}
+                      onChange={(e) => updateForm('lastName', e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="admin@lambdaempire.org"
+                      value={formData.email}
+                      onChange={(e) => updateForm('email', e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="Phone number"
+                    value={formData.phone}
+                    onChange={(e) => updateForm('phone', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter password"
+                      value={formData.password}
+                      onChange={(e) => updateForm('password', e.target.value)}
+                      className="pl-10 pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600" 
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Processing...' : 'Super Admin Access'}
+                </Button>
+
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  className="w-full" 
+                  onClick={() => setShowSuperAdminLogin(false)}
+                >
+                  Back to Member Login
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={isSignupMode ? handleSignup : handleLogin} className="space-y-4">
+                {isSignupMode && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
                       <Input
-                        id="signup-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Create a password"
-                        value={signupForm.password}
-                        onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })}
-                        className="pl-10 pr-10"
+                        id="firstName"
+                        type="text"
+                        placeholder="First name"
+                        value={formData.firstName}
+                        onChange={(e) => updateForm('firstName', e.target.value)}
                         required
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        type="text"
+                        placeholder="Last name"
+                        value={formData.lastName}
+                        onChange={(e) => updateForm('lastName', e.target.value)}
+                        required
+                      />
                     </div>
                   </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={formData.email}
+                      onChange={(e) => updateForm('email', e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {isSignupMode && (
                   <div className="space-y-2">
-                    <Label htmlFor="signup-confirmPassword">Confirm Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="signup-confirmPassword"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Confirm your password"
-                        value={signupForm.confirmPassword}
-                        onChange={(e) => setSignupForm({ ...signupForm, confirmPassword: e.target.value })}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
+                    <Label htmlFor="phone">Phone (optional)</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="Phone number"
+                      value={formData.phone}
+                      onChange={(e) => updateForm('phone', e.target.value)}
+                    />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Creating account...' : 'Create Account'}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder={isSignupMode ? "Create a password" : "Enter your password"}
+                      value={formData.password}
+                      onChange={(e) => updateForm('password', e.target.value)}
+                      className="pl-10 pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading 
+                    ? 'Processing...' 
+                    : isSignupMode 
+                      ? 'Create Account' 
+                      : 'Sign In'
+                  }
+                </Button>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSignupMode(!isSignupMode);
+                      setError('');
+                    }}
+                    className="text-sm text-purple-600 hover:text-purple-800 transition-colors"
+                  >
+                    {isSignupMode 
+                      ? 'Already have an account? Sign in' 
+                      : "Don't have an account? Sign up"
+                    }
+                  </button>
+                </div>
+              </form>
+            )}
           </CardContent>
         </Card>
 
-        {/* Admin Access */}
-        <Card className="shadow-lg border-0 bg-gradient-to-r from-purple-500 to-blue-600 text-white">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Shield className="h-6 w-6" />
-                <div>
-                  <h3 className="font-semibold">Administrator?</h3>
-                  <p className="text-sm text-white/80">Access the admin portal</p>
-                </div>
-              </div>
-              <Link to="/admin-login">
-                <Button 
-                  variant="secondary"
-                  size="sm"
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                >
-                  Admin Login
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Hidden Super Admin Hint */}
+        {!showSuperAdminLogin && (
+          <div className="text-center text-xs text-gray-400">
+            Press Ctrl+Shift+S for super admin access
+          </div>
+        )}
 
         {/* Footer */}
         <div className="text-center text-sm text-gray-500">
