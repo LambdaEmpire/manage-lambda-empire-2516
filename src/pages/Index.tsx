@@ -38,7 +38,7 @@ export const Index = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-lambda-purple via-blue-900 to-lambda-gold">
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-900 to-amber-500">
       {/* Header */}
       <header className="relative z-10 bg-white/10 backdrop-blur-sm border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -77,7 +77,7 @@ export const Index = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/login">
-                <Button size="lg" className="bg-white text-lambda-purple hover:bg-white/90 font-semibold px-8 py-3">
+                <Button size="lg" className="bg-white text-purple-600 hover:bg-white/90 font-semibold px-8 py-3">
                   Access Your Account
                 </Button>
               </Link>
@@ -157,7 +157,7 @@ export const Index = () => {
               Join your Lambda Empire community and access all the tools you need to succeed.
             </p>
             <Link to="/login">
-              <Button size="lg" className="bg-white text-lambda-purple hover:bg-white/90 font-semibold px-8 py-3">
+              <Button size="lg" className="bg-white text-purple-600 hover:bg-white/90 font-semibold px-8 py-3">
                 Sign In Now
               </Button>
             </Link>
