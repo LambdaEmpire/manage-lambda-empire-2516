@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 import ErrorBoundary from './components/ErrorBoundary';
 import { LazyLoader } from './components/LazyLoader';
 import { PerformanceMonitor } from './components/PerformanceMonitor';
+import { RoleDebugger } from './components/RoleDebugger';
 import { useOptimizedAuth } from './hooks/useOptimizedAuth';
 import { RoleBasedRoute, AdminRoute, SuperAdminRoute } from './components/RoleBasedRoute';
 import { SmartRedirect } from './components/SmartRedirect';
@@ -35,6 +36,7 @@ const EmpireHouse = lazy(() => import('./pages/EmpireHouse'));
 const Fundraising = lazy(() => import('./pages/Fundraising'));
 const Communications = lazy(() => import('./pages/Communications'));
 const AdminSquareIntegration = lazy(() => import('./pages/AdminSquareIntegration'));
+const RoleManagement = lazy(() => import('./pages/RoleManagement'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Optimized QueryClient configuration
@@ -349,6 +351,16 @@ function App() {
                   </SuperAdminRoute>
                 } 
               />
+              <Route 
+                path="/role-management" 
+                element={
+                  <SuperAdminRoute>
+                    <LazyLoader>
+                      <RoleManagement />
+                    </LazyLoader>
+                  </SuperAdminRoute>
+                } 
+              />
 
               {/* 404 Route */}
               <Route 
@@ -363,6 +375,7 @@ function App() {
             
             <Toaster position="top-right" />
             <PerformanceMonitor />
+            <RoleDebugger />
           </div>
         </Router>
       </QueryClientProvider>
