@@ -34,7 +34,6 @@ const Fundraising = lazy(() => import('./pages/Fundraising'));
 const Communications = lazy(() => import('./pages/Communications'));
 const AdminSquareIntegration = lazy(() => import('./pages/AdminSquareIntegration'));
 const NotFound = lazy(() => import('./pages/NotFound'));
-const DashboardLayout = lazy(() => import('./components/layout/DashboardLayout'));
 
 // Optimized QueryClient configuration
 const queryClient = new QueryClient({
@@ -133,267 +132,209 @@ function App() {
                 } 
               />
 
-              {/* Protected Routes with Dashboard Layout */}
+              {/* Protected Member Routes */}
               <Route 
                 path="/member-dashboard" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <MemberDashboard />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><MemberDashboard /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/member-profile" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <MemberProfile />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><MemberProfile /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/events" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <Events />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><Events /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/payment-center" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <PaymentCenter />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><PaymentCenter /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/member-directory" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <MemberDirectory />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><MemberDirectory /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/lambda-knowledge" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <LambdaKnowledge />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><LambdaKnowledge /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/service-hours" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <ServiceHours />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><ServiceHours /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/accomplishments" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <AccomplishmentsManagement />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><AccomplishmentsManagement /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/member-inbox" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <MemberInbox />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><MemberInbox /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/recruitment" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <Recruitment />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><Recruitment /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/empire-house" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <EmpireHouse />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><EmpireHouse /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/fundraising" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <Fundraising />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><Fundraising /></LazyLoader>} />
-              </Route>
+                } 
+              />
 
-              {/* Admin Routes */}
+              {/* Protected Admin Routes */}
               <Route 
                 path="/admin-dashboard" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <AdminDashboard />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><AdminDashboard /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/admin-member-management" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <AdminMemberManagement />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><AdminMemberManagement /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/admin-payment-management" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <AdminPaymentManagement />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><AdminPaymentManagement /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/status-management" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <StatusManagement />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><StatusManagement /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/admin-creation" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <AdminCreation />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><AdminCreation /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/admin-inbox-monitor" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <AdminInboxMonitor />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><AdminInboxMonitor /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/communications" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <Communications />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><Communications /></LazyLoader>} />
-              </Route>
-
+                } 
+              />
               <Route 
                 path="/admin-square-integration" 
                 element={
                   <ProtectedRoute>
                     <LazyLoader>
-                      <DashboardLayout />
+                      <AdminSquareIntegration />
                     </LazyLoader>
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<LazyLoader><AdminSquareIntegration /></LazyLoader>} />
-              </Route>
+                } 
+              />
 
               {/* 404 Route */}
               <Route 

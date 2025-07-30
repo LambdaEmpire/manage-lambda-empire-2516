@@ -10,15 +10,45 @@ import {
   TrendingUp,
   CheckCircle,
   AlertCircle,
-  Users
+  Users,
+  LogOut
 } from 'lucide-react';
-import { useOptimizedAuth } from '@/hooks/useOptimizedAuth'; // Import useOptimizedAuth
+import { useOptimizedAuth } from '@/hooks/useOptimizedAuth';
+import { supabase } from '@/lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
 export default function MemberDashboard() {
-  const { user } = useOptimizedAuth(); // Get user from useOptimizedAuth
+  const { user } = useOptimizedAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Header with Logout */}
+      <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">Lambda Empire Management</h1>
+          <p className="text-sm text-gray-600">Member Dashboard</p>
+        </div>
+        <Button 
+          onClick={handleLogout}
+          variant="outline" 
+          size="sm"
+          className="flex items-center gap-2"
+        >
+          <LogOut className="h-4 w-4" />
+          Logout
+        </Button>
+      </div>
+
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-lambda-purple to-lambda-gold p-6 rounded-xl text-white">
         <div className="flex items-center justify-between">
