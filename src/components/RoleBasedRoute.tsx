@@ -1,49 +1,37 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useUserRole, UserRole } from '@/hooks/useUserRole';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useOptimizedAuth } from '@/hooks/useOptimizedAuth';
 import LoadingSpinner from './LoadingSpinner';
 
 interface RoleBasedRouteProps {
   children: React.ReactNode;
-  allowedRoles: UserRole[];
-  fallbackPath?: string;
+  allowedRoles: string[];
 }
 
 export const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({ 
   children, 
-  allowedRoles, 
-  fallbackPath = '/member-dashboard' 
+  allowedRoles
 }) => {
   const { isAuthenticated, loading: authLoading } = useOptimizedAuth();
-  const { role, loading: roleLoading, hasRole } = useUserRole();
+  const { role, loading: roleLoading } = useUserRole();
 
-  // Show loading spinner while authentication or role is loading
   if (authLoading || roleLoading) {
     return <LoadingSpinner />;
   }
 
-  // Redirect to login if not authenticated
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  debugger;
-
-  // Check if user has required role
-  if (!hasRole(allowedRoles)) {
-    return <Navigate to={fallbackPath} replace />;
+  if (!allowedRoles.includes(role)) {
+    return <Navigate to="/member-dashboard" replace />;
   }
 
-  // User is authenticated and has the required role
   return <>{children}</>;
 };
 
-interface AdminRouteProps {
-  children: React.ReactNode;
-}
-
-export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
+export const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <RoleBasedRoute allowedRoles={['admin', 'super_admin']}>
       {children}
@@ -51,13 +39,9 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   );
 };
 
-interface SuperAdminRouteProps {
-  children: React.ReactNode;
-}
-
-export const SuperAdminRoute: React.FC<SuperAdminRouteProps> = ({ children }) => {
+export const SuperAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
-    <RoleBasedRoute allowedRoles={['super_admin']} fallbackPath="/admin-dashboard">
+    <RoleBasedRoute allowedRoles={['super_admin']}>
       {children}
     </RoleBasedRoute>
   );

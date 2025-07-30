@@ -1,84 +1,45 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useOptimizedAuth } from './useOptimizedAuth';
 
 export type UserRole = 'member' | 'admin' | 'super_admin';
 
-// Create a singleton to prevent multiple instances from interfering
-let roleCache: { [userId: string]: { role: UserRole; timestamp: number } } = {};
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
 export const useUserRole = () => {
-  const { user, isAuthenticated } = useOptimizedAuth();
-  const [role, setRole] = useState<UserRole | null>(null);
+  const { user } = useOptimizedAuth();
+  const [role, setRole] = useState<UserRole>('member');
   const [loading, setLoading] = useState(true);
 
-  const userId = user?.id;
-
-  const fetchRole = useCallback(async () => {
-    if (!isAuthenticated || !userId) {
-      setRole(null);
-      setLoading(false);
-      return;
-    }
-
-    // Check cache first
-    const cached = roleCache[userId];
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      setRole(cached.role);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      let fetchedRole: UserRole = 'member';
-      
-      if (!error && data?.role) {
-        fetchedRole = data.role as UserRole;
-      }
-
-      // Cache the result
-      roleCache[userId] = {
-        role: fetchedRole,
-        timestamp: Date.now()
-      };
-
-      setRole(fetchedRole);
-    } catch (error) {
-      setRole('member');
-    } finally {
-      setLoading(false);
-    }
-  }, [isAuthenticated, userId]);
-
   useEffect(() => {
-    fetchRole();
-  }, [fetchRole]);
-
-  const hasRole = useCallback((requiredRole: UserRole | UserRole[]) => {
-    if (!role) return false;
-    
-    if (Array.isArray(requiredRole)) {
-      return requiredRole.includes(role);
+    if (!user?.id) {
+      setRole('member');
+      setLoading(false);
+      return;
     }
-    
-    return role === requiredRole;
-  }, [role]);
 
-  const isAdmin = useCallback(() => hasRole(['admin', 'super_admin']), [hasRole]);
-  const isSuperAdmin = useCallback(() => hasRole('super_admin'), [hasRole]);
+    // Simple, direct fetch
+    supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single()
+      .then(({ data, error }) => {
+        if (data?.role) {
+          setRole(data.role as UserRole);
+        } else {
+          setRole('member');
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setRole('member');
+        setLoading(false);
+      });
+  }, [user?.id]);
 
-  return useMemo(() => ({
+  return {
     role,
     loading,
-    hasRole,
-    isAdmin,
-    isSuperAdmin
-  }), [role, loading, hasRole, isAdmin, isSuperAdmin]);
+    isAdmin: role === 'admin' || role === 'super_admin',
+    isSuperAdmin: role === 'super_admin'
+  };
 };
