@@ -20,18 +20,25 @@ export const useUserRole = () => {
 
       try {
         console.log('useUserRole: Fetching role for user:', user.id);
+        
+        // Use maybeSingle() instead of single() to avoid errors when no data is found
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
+
+        console.log('useUserRole: Raw response:', { data, error });
 
         if (error) {
           console.error('useUserRole: Error fetching user role:', error);
-          setRole('member'); // Default to member if no role found
-        } else {
+          setRole('member'); // Default to member if error
+        } else if (data && data.role) {
           console.log('useUserRole: Fetched role:', data.role);
           setRole(data.role as UserRole);
+        } else {
+          console.log('useUserRole: No role found, defaulting to member');
+          setRole('member'); // Default to member if no role found
         }
       } catch (error) {
         console.error('useUserRole: Exception fetching user role:', error);
@@ -46,7 +53,7 @@ export const useUserRole = () => {
 
   const hasRole = (requiredRole: UserRole | UserRole[]) => {
     if (!role) {
-      console.log('hasRole: No role set');
+      console.log('hasRole: No role set, role is:', role);
       return false;
     }
     
