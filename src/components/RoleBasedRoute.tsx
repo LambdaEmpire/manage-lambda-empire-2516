@@ -18,18 +18,32 @@ export const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
   const { isAuthenticated, loading: authLoading } = useOptimizedAuth();
   const { role, loading: roleLoading, hasRole } = useUserRole();
 
+  // Debug logging
+  console.log('RoleBasedRoute Debug:', {
+    isAuthenticated,
+    authLoading,
+    role,
+    roleLoading,
+    allowedRoles,
+    hasRole: hasRole(allowedRoles),
+    fallbackPath
+  });
+
   if (authLoading || roleLoading) {
     return <LoadingSpinner />;
   }
 
   if (!isAuthenticated) {
+    console.log('Not authenticated, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
   if (!hasRole(allowedRoles)) {
+    console.log('Role check failed, redirecting to:', fallbackPath);
     return <Navigate to={fallbackPath} replace />;
   }
 
+  console.log('Role check passed, rendering children');
   return <>{children}</>;
 };
 

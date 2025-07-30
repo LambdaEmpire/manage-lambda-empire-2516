@@ -12,12 +12,14 @@ export const useUserRole = () => {
   useEffect(() => {
     const fetchUserRole = async () => {
       if (!user?.id) {
+        console.log('useUserRole: No user ID');
         setRole(null);
         setLoading(false);
         return;
       }
 
       try {
+        console.log('useUserRole: Fetching role for user:', user.id);
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
@@ -25,13 +27,14 @@ export const useUserRole = () => {
           .single();
 
         if (error) {
-          console.error('Error fetching user role:', error);
+          console.error('useUserRole: Error fetching user role:', error);
           setRole('member'); // Default to member if no role found
         } else {
+          console.log('useUserRole: Fetched role:', data.role);
           setRole(data.role as UserRole);
         }
       } catch (error) {
-        console.error('Error fetching user role:', error);
+        console.error('useUserRole: Exception fetching user role:', error);
         setRole('member');
       } finally {
         setLoading(false);
@@ -42,13 +45,20 @@ export const useUserRole = () => {
   }, [user?.id]);
 
   const hasRole = (requiredRole: UserRole | UserRole[]) => {
-    if (!role) return false;
-    
-    if (Array.isArray(requiredRole)) {
-      return requiredRole.includes(role);
+    if (!role) {
+      console.log('hasRole: No role set');
+      return false;
     }
     
-    return role === requiredRole;
+    if (Array.isArray(requiredRole)) {
+      const result = requiredRole.includes(role);
+      console.log('hasRole: Checking array', { role, requiredRole, result });
+      return result;
+    }
+    
+    const result = role === requiredRole;
+    console.log('hasRole: Checking single', { role, requiredRole, result });
+    return result;
   };
 
   const isAdmin = () => hasRole(['admin', 'super_admin']);
