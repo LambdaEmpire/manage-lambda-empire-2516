@@ -17,8 +17,7 @@ export default defineConfig({
     terserOptions: {
       compress: {
         drop_console: false,
-        drop_debugger: false,
-        pure_funcs: ['console.log', 'console.info', 'console.debug']
+        drop_debugger: false
       }
     },
     rollupOptions: {

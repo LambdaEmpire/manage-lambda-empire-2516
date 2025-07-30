@@ -19,7 +19,7 @@ export const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
   const { role, loading: roleLoading, hasRole } = useUserRole();
 
   // Debug logging
-  console.assert(0, 'RoleBasedRoute Debug:', {
+  console.log('RoleBasedRoute Debug:', {
     isAuthenticated,
     authLoading,
     role,
@@ -34,16 +34,16 @@ export const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
   }
 
   if (!isAuthenticated) {
-    console.assert(0, 'Not authenticated, redirecting to login');
+    console.log('Not authenticated, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
   if (!hasRole(allowedRoles)) {
-    console.assert(0, 'Role check failed, redirecting to:', fallbackPath);
+    console.log('Role check failed, redirecting to:', fallbackPath);
     return <Navigate to={fallbackPath} replace />;
   }
 
-  console.assert(0, 'Role check passed, rendering children');
+  console.log('Role check passed, rendering children');
   return <>{children}</>;
 };
 
