@@ -32,26 +32,18 @@ export default function MemberDashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header with Logout */}
-      <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Lambda Empire Management</h1>
-          <p className="text-sm text-gray-600">Member Dashboard</p>
-        </div>
+      {/* Combined Welcome Section with Logout */}
+      <div className="bg-gradient-to-r from-lambda-purple to-lambda-gold p-6 rounded-xl text-white relative">
         <Button 
           onClick={handleLogout}
           variant="outline" 
           size="sm"
-          className="flex items-center gap-2"
+          className="absolute top-4 right-4 flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20"
         >
           <LogOut className="h-4 w-4" />
           Logout
         </Button>
-      </div>
-
-      {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-lambda-purple to-lambda-gold p-6 rounded-xl text-white">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between pr-20">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Welcome back, {user?.first_name || 'Member'}!</h1>
             <p className="text-white/90 mt-1">Member ID: {user?.id ? user.id.substring(0, 8) : 'N/A'} • Chapter Level</p>
