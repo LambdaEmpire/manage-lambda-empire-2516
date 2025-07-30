@@ -28,6 +28,8 @@ export const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
     return <Navigate to="/login" replace />;
   }
 
+  debugger;
+
   // Check if user has required role
   if (!hasRole(allowedRoles)) {
     return <Navigate to={fallbackPath} replace />;
