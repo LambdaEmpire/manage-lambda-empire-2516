@@ -12,14 +12,19 @@ import {
   AlertCircle,
   Users,
   LogOut,
-  Shield
+  Shield,
+  Settings,
+  UserCog,
+  BarChart3
 } from 'lucide-react';
 import { useOptimizedAuth } from '@/hooks/useOptimizedAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/lib/supabase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 export default function MemberDashboard() {
   const { user } = useOptimizedAuth();
+  const { role, isAdmin, isSuperAdmin } = useUserRole();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -46,13 +51,42 @@ export default function MemberDashboard() {
                 <p className="text-white/80 text-sm">Member Dashboard</p>
               </div>
             </div>
-            <Button 
-              onClick={handleLogout}
-              className="bg-white/20 hover:bg-white/30 text-white border-white/30 flex items-center gap-2"
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
+            <div className="flex items-center gap-3">
+              {/* Admin Navigation Links */}
+              {isAdmin() && (
+                <div className="flex items-center gap-2">
+                  <Link to="/admin-dashboard">
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Admin Dashboard
+                    </Button>
+                  </Link>
+                  {isSuperAdmin() && (
+                    <Link to="/role-management">
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                      >
+                        <UserCog className="h-4 w-4 mr-2" />
+                        Role Management
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              )}
+              <Button 
+                onClick={handleLogout}
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30 flex items-center gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -62,11 +96,75 @@ export default function MemberDashboard() {
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Welcome Section */}
           <div className="bg-white/10 backdrop-blur-sm border border-white/20 p-6 rounded-xl text-white">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold">Welcome back, {user?.first_name || 'Member'}!</h1>
-              <p className="text-white/90 mt-1">Member ID: {user?.id ? user.id.substring(0, 8) : 'N/A'} • Chapter Level</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold">Welcome back, {user?.first_name || 'Member'}!</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-white/90">Member ID: {user?.id ? user.id.substring(0, 8) : 'N/A'} • Chapter Level</p>
+                  {role && role !== 'member' && (
+                    <Badge className="bg-white/20 text-white border-white/30">
+                      {role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                    </Badge>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* Admin Quick Access - Only show for admins */}
+          {isAdmin() && (
+            <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Admin Quick Access
+                </CardTitle>
+                <CardDescription className="text-white/80">
+                  Administrative tools and management functions
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <Link to="/admin-dashboard">
+                  <Button className="w-full justify-start bg-white/10 hover:bg-white/20 text-white border-white/30">
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Admin Dashboard
+                  </Button>
+                </Link>
+                <Link to="/admin-member-management">
+                  <Button className="w-full justify-start bg-white/10 hover:bg-white/20 text-white border-white/30">
+                    <Users className="h-4 w-4 mr-2" />
+                    Member Management
+                  </Button>
+                </Link>
+                <Link to="/admin-payment-management">
+                  <Button className="w-full justify-start bg-white/10 hover:bg-white/20 text-white border-white/30">
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Payment Management
+                  </Button>
+                </Link>
+                <Link to="/status-management">
+                  <Button className="w-full justify-start bg-white/10 hover:bg-white/20 text-white border-white/30">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Status Management
+                  </Button>
+                </Link>
+                <Link to="/communications">
+                  <Button className="w-full justify-start bg-white/10 hover:bg-white/20 text-white border-white/30">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    Communications
+                  </Button>
+                </Link>
+                {isSuperAdmin() && (
+                  <Link to="/role-management">
+                    <Button className="w-full justify-start bg-white/10 hover:bg-white/20 text-white border-white/30">
+                      <UserCog className="h-4 w-4 mr-2" />
+                      Role Management
+                    </Button>
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
