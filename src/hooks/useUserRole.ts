@@ -13,6 +13,11 @@ export const useUserRole = () => {
     let isMounted = true;
 
     const fetchRole = async () => {
+      // Keep loading true until we have a definitive result
+      if (isMounted) {
+        setLoading(true);
+      }
+
       if (!isAuthenticated || !user?.id) {
         if (isMounted) {
           setRole(null);
@@ -22,7 +27,6 @@ export const useUserRole = () => {
       }
 
       try {
-        // Use the exact same query that works in the manual test
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
@@ -40,6 +44,7 @@ export const useUserRole = () => {
             console.log('No role found, defaulting to member');
             setRole('member');
           }
+          // Only set loading to false AFTER we've set the role
           setLoading(false);
         }
       } catch (error) {
