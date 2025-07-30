@@ -15,31 +15,28 @@ export const RoleDebugger: React.FC = () => {
     }
 
     try {
-      console.log('Manual test: Fetching role for', user.id);
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      console.log('Manual test result:', { data, error });
       setTestResult(`Data: ${JSON.stringify(data)}, Error: ${JSON.stringify(error)}`);
     } catch (err) {
-      console.error('Manual test error:', err);
       setTestResult(`Exception: ${err}`);
     }
   };
 
   return (
     <div className="fixed bottom-4 right-4 bg-black text-white p-4 rounded-lg text-xs z-50 max-w-sm">
-      <div className="font-bold mb-2">Debug Info:</div>
+      <div className="font-bold mb-2">Role System Status:</div>
       <div>User ID: {user?.id?.substring(0, 8) || 'None'}</div>
       <div>Email: {user?.email || 'None'}</div>
       <div>Authenticated: {isAuthenticated ? 'Yes' : 'No'}</div>
-      <div>Role: {loading ? 'Loading...' : role || 'None'}</div>
+      <div className="text-green-400">Role: {loading ? 'Loading...' : role || 'None'}</div>
       <div>Loading: {loading ? 'Yes' : 'No'}</div>
-      <div>Is Admin: {isAdmin() ? 'Yes' : 'No'}</div>
-      <div>Is Super Admin: {isSuperAdmin() ? 'Yes' : 'No'}</div>
+      <div className="text-blue-400">Is Admin: {isAdmin() ? 'Yes' : 'No'}</div>
+      <div className="text-purple-400">Is Super Admin: {isSuperAdmin() ? 'Yes' : 'No'}</div>
       
       <button 
         onClick={testRoleFetch}

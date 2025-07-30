@@ -13,11 +13,6 @@ export const useUserRole = () => {
     let isMounted = true;
 
     const fetchRole = async () => {
-      // Keep loading true until we have a definitive result
-      if (isMounted) {
-        setLoading(true);
-      }
-
       if (!isAuthenticated || !user?.id) {
         if (isMounted) {
           setRole(null);
@@ -35,20 +30,15 @@ export const useUserRole = () => {
 
         if (isMounted) {
           if (error) {
-            console.error('Role fetch error:', error);
             setRole('member');
           } else if (data?.role) {
-            console.log('Role fetched successfully:', data.role);
             setRole(data.role as UserRole);
           } else {
-            console.log('No role found, defaulting to member');
             setRole('member');
           }
-          // Only set loading to false AFTER we've set the role
           setLoading(false);
         }
       } catch (error) {
-        console.error('Role fetch exception:', error);
         if (isMounted) {
           setRole('member');
           setLoading(false);
