@@ -53,7 +53,7 @@ export default function MemberDashboard() {
             </div>
             <div className="flex items-center gap-3">
               {/* Admin Navigation Links */}
-              {isAdmin() && (
+              {isAdmin && (
                 <div className="flex items-center gap-2">
                   <Link to="/admin-dashboard">
                     <Button 
@@ -65,7 +65,7 @@ export default function MemberDashboard() {
                       Admin Dashboard
                     </Button>
                   </Link>
-                  {isSuperAdmin() && (
+                  {isSuperAdmin && (
                     <Link to="/role-management">
                       <Button 
                         variant="outline"
@@ -112,7 +112,7 @@ export default function MemberDashboard() {
           </div>
 
           {/* Admin Quick Access - Only show for admins */}
-          {isAdmin() && (
+          {isAdmin && (
             <Card className="bg-white/10 backdrop-blur-sm border-white/20">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
@@ -154,7 +154,7 @@ export default function MemberDashboard() {
                     Communications
                   </Button>
                 </Link>
-                {isSuperAdmin() && (
+                {isSuperAdmin && (
                   <Link to="/role-management">
                     <Button className="w-full justify-start bg-white/10 hover:bg-white/20 text-white border-white/30">
                       <UserCog className="h-4 w-4 mr-2" />
