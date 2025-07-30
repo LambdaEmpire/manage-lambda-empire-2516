@@ -43,16 +43,9 @@ export default function MemberDashboard() {
           <LogOut className="h-4 w-4" />
           Logout
         </Button>
-        <div className="flex items-center justify-between pr-20">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Welcome back, {user?.first_name || 'Member'}!</h1>
-            <p className="text-white/90 mt-1">Member ID: {user?.id ? user.id.substring(0, 8) : 'N/A'} • Chapter Level</p>
-          </div>
-          <div className="hidden md:block">
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-              <span className="text-2xl font-bold">Λ</span>
-            </div>
-          </div>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Welcome back, {user?.first_name || 'Member'}!</h1>
+          <p className="text-white/90 mt-1">Member ID: {user?.id ? user.id.substring(0, 8) : 'N/A'} • Chapter Level</p>
         </div>
       </div>
 
