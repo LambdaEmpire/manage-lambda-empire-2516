@@ -6,6 +6,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { LazyLoader } from './components/LazyLoader';
 import { PerformanceMonitor } from './components/PerformanceMonitor';
 import { useOptimizedAuth } from './hooks/useOptimizedAuth';
+import { RoleBasedRoute, AdminRoute, SuperAdminRoute } from './components/RoleBasedRoute';
+import { SmartRedirect } from './components/SmartRedirect';
 import LoadingSpinner from './components/LoadingSpinner';
 
 // Lazy load all pages for better performance
@@ -81,7 +83,7 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/member-dashboard" replace />;
+    return <SmartRedirect />;
   }
 
   return <>{children}</>;
@@ -132,207 +134,219 @@ function App() {
                 } 
               />
 
-              {/* Protected Member Routes */}
+              {/* Smart redirect for authenticated users */}
+              <Route 
+                path="/dashboard" 
+                element={
+                  <ProtectedRoute>
+                    <SmartRedirect />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Member Routes */}
               <Route 
                 path="/member-dashboard" 
                 element={
-                  <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
                     <LazyLoader>
                       <MemberDashboard />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </RoleBasedRoute>
                 } 
               />
               <Route 
                 path="/member-profile" 
                 element={
-                  <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
                     <LazyLoader>
                       <MemberProfile />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </RoleBasedRoute>
                 } 
               />
               <Route 
                 path="/events" 
                 element={
-                  <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
                     <LazyLoader>
                       <Events />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </RoleBasedRoute>
                 } 
               />
               <Route 
                 path="/payment-center" 
                 element={
-                  <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
                     <LazyLoader>
                       <PaymentCenter />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </RoleBasedRoute>
                 } 
               />
               <Route 
                 path="/member-directory" 
                 element={
-                  <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
                     <LazyLoader>
                       <MemberDirectory />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </RoleBasedRoute>
                 } 
               />
               <Route 
                 path="/lambda-knowledge" 
                 element={
-                  <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
                     <LazyLoader>
                       <LambdaKnowledge />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </RoleBasedRoute>
                 } 
               />
               <Route 
                 path="/service-hours" 
                 element={
-                  <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
                     <LazyLoader>
                       <ServiceHours />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </RoleBasedRoute>
                 } 
               />
               <Route 
                 path="/accomplishments" 
                 element={
-                  <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
                     <LazyLoader>
                       <AccomplishmentsManagement />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </RoleBasedRoute>
                 } 
               />
               <Route 
                 path="/member-inbox" 
                 element={
-                  <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
                     <LazyLoader>
                       <MemberInbox />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </RoleBasedRoute>
                 } 
               />
               <Route 
                 path="/recruitment" 
                 element={
-                  <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
                     <LazyLoader>
                       <Recruitment />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </RoleBasedRoute>
                 } 
               />
               <Route 
                 path="/empire-house" 
                 element={
-                  <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
                     <LazyLoader>
                       <EmpireHouse />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </RoleBasedRoute>
                 } 
               />
               <Route 
                 path="/fundraising" 
                 element={
-                  <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
                     <LazyLoader>
                       <Fundraising />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </RoleBasedRoute>
                 } 
               />
 
-              {/* Protected Admin Routes */}
+              {/* Admin Routes */}
               <Route 
                 path="/admin-dashboard" 
                 element={
-                  <ProtectedRoute>
+                  <AdminRoute>
                     <LazyLoader>
                       <AdminDashboard />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </AdminRoute>
                 } 
               />
               <Route 
                 path="/admin-member-management" 
                 element={
-                  <ProtectedRoute>
+                  <AdminRoute>
                     <LazyLoader>
                       <AdminMemberManagement />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </AdminRoute>
                 } 
               />
               <Route 
                 path="/admin-payment-management" 
                 element={
-                  <ProtectedRoute>
+                  <AdminRoute>
                     <LazyLoader>
                       <AdminPaymentManagement />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </AdminRoute>
                 } 
               />
               <Route 
                 path="/status-management" 
                 element={
-                  <ProtectedRoute>
+                  <AdminRoute>
                     <LazyLoader>
                       <StatusManagement />
                     </LazyLoader>
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/admin-creation" 
-                element={
-                  <ProtectedRoute>
-                    <LazyLoader>
-                      <AdminCreation />
-                    </LazyLoader>
-                  </ProtectedRoute>
+                  </AdminRoute>
                 } 
               />
               <Route 
                 path="/admin-inbox-monitor" 
                 element={
-                  <ProtectedRoute>
+                  <AdminRoute>
                     <LazyLoader>
                       <AdminInboxMonitor />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </AdminRoute>
                 } 
               />
               <Route 
                 path="/communications" 
                 element={
-                  <ProtectedRoute>
+                  <AdminRoute>
                     <LazyLoader>
                       <Communications />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </AdminRoute>
                 } 
               />
               <Route 
                 path="/admin-square-integration" 
                 element={
-                  <ProtectedRoute>
+                  <AdminRoute>
                     <LazyLoader>
                       <AdminSquareIntegration />
                     </LazyLoader>
-                  </ProtectedRoute>
+                  </AdminRoute>
+                } 
+              />
+
+              {/* Super Admin Routes */}
+              <Route 
+                path="/admin-creation" 
+                element={
+                  <SuperAdminRoute>
+                    <LazyLoader>
+                      <AdminCreation />
+                    </LazyLoader>
+                  </SuperAdminRoute>
                 } 
               />
 
