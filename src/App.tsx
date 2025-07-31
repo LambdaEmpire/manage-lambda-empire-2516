@@ -1,383 +1,240 @@
-import React, { lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'sonner';
+import { Toaster } from '@/components/ui/toaster';
+import { RealtimeProvider } from './contexts/RealtimeContext';
 import ErrorBoundary from './components/ErrorBoundary';
-import { LazyLoader } from './components/LazyLoader';
-import { PerformanceMonitor } from './components/PerformanceMonitor';
-import { RoleDebugger } from './components/RoleDebugger';
 import { useOptimizedAuth } from './hooks/useOptimizedAuth';
-import { RoleBasedRoute, AdminRoute, SuperAdminRoute } from './components/RoleBasedRoute';
+import { useUserRole } from './hooks/useUserRole';
+import { RoleBasedRoute } from './components/RoleBasedRoute';
 import { SmartRedirect } from './components/SmartRedirect';
-import LoadingSpinner from './components/LoadingSpinner';
+import DashboardLayout from './components/layout/DashboardLayout';
 
-// Lazy load all pages for better performance
-const Index = lazy(() => import('./pages/Index'));
-const Login = lazy(() => import('./pages/Login'));
-const AdminLogin = lazy(() => import('./pages/AdminLogin'));
-const SuperAdminSetup = lazy(() => import('./pages/SuperAdminSetup'));
-const MemberDashboard = lazy(() => import('./pages/MemberDashboard'));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
-const MemberProfile = lazy(() => import('./pages/MemberProfile'));
-const Events = lazy(() => import('./pages/Events'));
-const PaymentCenter = lazy(() => import('./pages/PaymentCenter'));
-const MemberDirectory = lazy(() => import('./pages/MemberDirectory'));
-const AdminMemberManagement = lazy(() => import('./pages/AdminMemberManagement'));
-const LambdaKnowledge = lazy(() => import('./pages/LambdaKnowledge'));
-const ServiceHours = lazy(() => import('./pages/ServiceHours'));
-const AdminPaymentManagement = lazy(() => import('./pages/AdminPaymentManagement'));
-const StatusManagement = lazy(() => import('./pages/StatusManagement'));
-const AdminCreation = lazy(() => import('./pages/AdminCreation'));
-const AccomplishmentsManagement = lazy(() => import('./pages/AccomplishmentsManagement'));
-const MemberInbox = lazy(() => import('./pages/MemberInbox'));
-const AdminInboxMonitor = lazy(() => import('./pages/AdminInboxMonitor'));
-const Recruitment = lazy(() => import('./pages/Recruitment'));
-const EmpireHouse = lazy(() => import('./pages/EmpireHouse'));
-const Fundraising = lazy(() => import('./pages/Fundraising'));
-const Communications = lazy(() => import('./pages/Communications'));
-const AdminSquareIntegration = lazy(() => import('./pages/AdminSquareIntegration'));
-const RoleManagement = lazy(() => import('./pages/RoleManagement'));
-const NotFound = lazy(() => import('./pages/NotFound'));
+// Pages
+import Index from './pages/Index';
+import Login from './pages/Login';
+import AdminLogin from './pages/AdminLogin';
+import SuperAdminSetup from './pages/SuperAdminSetup';
+import AdminCreation from './pages/AdminCreation';
+import MemberDashboard from './pages/MemberDashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import MemberProfile from './pages/MemberProfile';
+import Events from './pages/Events';
+import PaymentCenter from './pages/PaymentCenter';
+import MemberDirectory from './pages/MemberDirectory';
+import AdminMemberManagement from './pages/AdminMemberManagement';
+import LambdaKnowledge from './pages/LambdaKnowledge';
+import ServiceHours from './pages/ServiceHours';
+import AdminPaymentManagement from './pages/AdminPaymentManagement';
+import StatusManagement from './pages/StatusManagement';
+import AccomplishmentsManagement from './pages/AccomplishmentsManagement';
+import MemberInbox from './pages/MemberInbox';
+import AdminInboxMonitor from './pages/AdminInboxMonitor';
+import Recruitment from './pages/Recruitment';
+import EmpireHouse from './pages/EmpireHouse';
+import RoleManagement from './pages/RoleManagement';
+import Fundraising from './pages/Fundraising';
+import Communications from './pages/Communications';
+import AdminSquareIntegration from './pages/AdminSquareIntegration';
+import NotFound from './pages/NotFound';
 
-// Optimized QueryClient configuration
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
-      retry: (failureCount, error: any) => {
-        // Don't retry on 4xx errors
-        if (error?.status >= 400 && error?.status < 500) {
-          return false;
-        }
-        return failureCount < 3;
-      },
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
-    },
-    mutations: {
       retry: 1,
     },
   },
 });
 
-// Protected Route Component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, loading } = useOptimizedAuth();
+function AppContent() {
+  const { user, session, loading } = useOptimizedAuth();
+  const { role, loading: roleLoading } = useUserRole(user?.id);
 
-  if (loading) {
-    return <LoadingSpinner />;
+  if (loading || roleLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="text-gray-600">Loading Lambda Empire...</p>
+        </div>
+      </div>
+    );
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  // Public routes (no authentication required)
+  const publicRoutes = (
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/admin-login" element={<AdminLogin />} />
+      <Route path="/super-admin-setup" element={<SuperAdminSetup />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+
+  // If user is not authenticated, show public routes
+  if (!user || !session) {
+    return publicRoutes;
   }
 
-  return <>{children}</>;
-};
+  // Authenticated routes with sidebar
+  return (
+    <DashboardLayout>
+      <Routes>
+        {/* Smart redirect for authenticated users */}
+        <Route path="/" element={<SmartRedirect />} />
+        
+        {/* Member Routes */}
+        <Route path="/member-dashboard" element={
+          <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
+            <MemberDashboard />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/profile" element={
+          <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
+            <MemberProfile />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/events" element={
+          <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
+            <Events />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/payments" element={
+          <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
+            <PaymentCenter />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/directory" element={
+          <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
+            <MemberDirectory />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/knowledge" element={
+          <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
+            <LambdaKnowledge />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/service-hours" element={
+          <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
+            <ServiceHours />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/accomplishments" element={
+          <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
+            <AccomplishmentsManagement />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/inbox" element={
+          <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
+            <MemberInbox />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/recruitment" element={
+          <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
+            <Recruitment />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/empire-house" element={
+          <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
+            <EmpireHouse />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/fundraising" element={
+          <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
+            <Fundraising />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/communications" element={
+          <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
+            <Communications />
+          </RoleBasedRoute>
+        } />
 
-// Public Route Component (redirects authenticated users)
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, loading } = useOptimizedAuth();
+        {/* Admin Routes */}
+        <Route path="/admin-dashboard" element={
+          <RoleBasedRoute allowedRoles={['admin', 'super_admin']}>
+            <AdminDashboard />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/admin/members" element={
+          <RoleBasedRoute allowedRoles={['admin', 'super_admin']}>
+            <AdminMemberManagement />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/admin/payments" element={
+          <RoleBasedRoute allowedRoles={['admin', 'super_admin']}>
+            <AdminPaymentManagement />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/admin/status" element={
+          <RoleBasedRoute allowedRoles={['admin', 'super_admin']}>
+            <StatusManagement />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/admin/inbox" element={
+          <RoleBasedRoute allowedRoles={['admin', 'super_admin']}>
+            <AdminInboxMonitor />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/admin/square" element={
+          <RoleBasedRoute allowedRoles={['admin', 'super_admin']}>
+            <AdminSquareIntegration />
+          </RoleBasedRoute>
+        } />
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
+        {/* Super Admin Routes */}
+        <Route path="/admin/create" element={
+          <RoleBasedRoute allowedRoles={['super_admin']}>
+            <AdminCreation />
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/admin/roles" element={
+          <RoleBasedRoute allowedRoles={['super_admin']}>
+            <RoleManagement />
+          </RoleBasedRoute>
+        } />
 
-  if (isAuthenticated) {
-    return <SmartRedirect />;
-  }
-
-  return <>{children}</>;
-};
+        {/* Public routes accessible to authenticated users */}
+        <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/admin-login" element={<Navigate to="/" replace />} />
+        <Route path="/super-admin-setup" element={<Navigate to="/" replace />} />
+        
+        {/* 404 Route */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </DashboardLayout>
+  );
+}
 
 function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <Router>
-          <div className="min-h-screen bg-gray-50">
-            <Routes>
-              {/* Public Routes */}
-              <Route 
-                path="/" 
-                element={
-                  <LazyLoader>
-                    <Index />
-                  </LazyLoader>
-                } 
-              />
-              <Route 
-                path="/login" 
-                element={
-                  <PublicRoute>
-                    <LazyLoader>
-                      <Login />
-                    </LazyLoader>
-                  </PublicRoute>
-                } 
-              />
-              <Route 
-                path="/admin-login" 
-                element={
-                  <PublicRoute>
-                    <LazyLoader>
-                      <AdminLogin />
-                    </LazyLoader>
-                  </PublicRoute>
-                } 
-              />
-              <Route 
-                path="/super-admin-setup" 
-                element={
-                  <LazyLoader>
-                    <SuperAdminSetup />
-                  </LazyLoader>
-                } 
-              />
-
-              {/* Smart redirect for authenticated users */}
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <SmartRedirect />
-                  </ProtectedRoute>
-                } 
-              />
-
-              {/* Member Routes */}
-              <Route 
-                path="/member-dashboard" 
-                element={
-                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
-                    <LazyLoader>
-                      <MemberDashboard />
-                    </LazyLoader>
-                  </RoleBasedRoute>
-                } 
-              />
-              <Route 
-                path="/member-profile" 
-                element={
-                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
-                    <LazyLoader>
-                      <MemberProfile />
-                    </LazyLoader>
-                  </RoleBasedRoute>
-                } 
-              />
-              <Route 
-                path="/events" 
-                element={
-                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
-                    <LazyLoader>
-                      <Events />
-                    </LazyLoader>
-                  </RoleBasedRoute>
-                } 
-              />
-              <Route 
-                path="/payment-center" 
-                element={
-                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
-                    <LazyLoader>
-                      <PaymentCenter />
-                    </LazyLoader>
-                  </RoleBasedRoute>
-                } 
-              />
-              <Route 
-                path="/member-directory" 
-                element={
-                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
-                    <LazyLoader>
-                      <MemberDirectory />
-                    </LazyLoader>
-                  </RoleBasedRoute>
-                } 
-              />
-              <Route 
-                path="/lambda-knowledge" 
-                element={
-                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
-                    <LazyLoader>
-                      <LambdaKnowledge />
-                    </LazyLoader>
-                  </RoleBasedRoute>
-                } 
-              />
-              <Route 
-                path="/service-hours" 
-                element={
-                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
-                    <LazyLoader>
-                      <ServiceHours />
-                    </LazyLoader>
-                  </RoleBasedRoute>
-                } 
-              />
-              <Route 
-                path="/accomplishments" 
-                element={
-                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
-                    <LazyLoader>
-                      <AccomplishmentsManagement />
-                    </LazyLoader>
-                  </RoleBasedRoute>
-                } 
-              />
-              <Route 
-                path="/member-inbox" 
-                element={
-                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
-                    <LazyLoader>
-                      <MemberInbox />
-                    </LazyLoader>
-                  </RoleBasedRoute>
-                } 
-              />
-              <Route 
-                path="/recruitment" 
-                element={
-                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
-                    <LazyLoader>
-                      <Recruitment />
-                    </LazyLoader>
-                  </RoleBasedRoute>
-                } 
-              />
-              <Route 
-                path="/empire-house" 
-                element={
-                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
-                    <LazyLoader>
-                      <EmpireHouse />
-                    </LazyLoader>
-                  </RoleBasedRoute>
-                } 
-              />
-              <Route 
-                path="/fundraising" 
-                element={
-                  <RoleBasedRoute allowedRoles={['member', 'admin', 'super_admin']}>
-                    <LazyLoader>
-                      <Fundraising />
-                    </LazyLoader>
-                  </RoleBasedRoute>
-                } 
-              />
-
-              {/* Admin Routes */}
-              <Route 
-                path="/admin-dashboard" 
-                element={
-                  <AdminRoute>
-                    <LazyLoader>
-                      <AdminDashboard />
-                    </LazyLoader>
-                  </AdminRoute>
-                } 
-              />
-              <Route 
-                path="/admin-member-management" 
-                element={
-                  <AdminRoute>
-                    <LazyLoader>
-                      <AdminMemberManagement />
-                    </LazyLoader>
-                  </AdminRoute>
-                } 
-              />
-              <Route 
-                path="/admin-payment-management" 
-                element={
-                  <AdminRoute>
-                    <LazyLoader>
-                      <AdminPaymentManagement />
-                    </LazyLoader>
-                  </AdminRoute>
-                } 
-              />
-              <Route 
-                path="/status-management" 
-                element={
-                  <AdminRoute>
-                    <LazyLoader>
-                      <StatusManagement />
-                    </LazyLoader>
-                  </AdminRoute>
-                } 
-              />
-              <Route 
-                path="/admin-inbox-monitor" 
-                element={
-                  <AdminRoute>
-                    <LazyLoader>
-                      <AdminInboxMonitor />
-                    </LazyLoader>
-                  </AdminRoute>
-                } 
-              />
-              <Route 
-                path="/communications" 
-                element={
-                  <AdminRoute>
-                    <LazyLoader>
-                      <Communications />
-                    </LazyLoader>
-                  </AdminRoute>
-                } 
-              />
-              <Route 
-                path="/admin-square-integration" 
-                element={
-                  <AdminRoute>
-                    <LazyLoader>
-                      <AdminSquareIntegration />
-                    </LazyLoader>
-                  </AdminRoute>
-                } 
-              />
-
-              {/* Super Admin Routes */}
-              <Route 
-                path="/admin-creation" 
-                element={
-                  <SuperAdminRoute>
-                    <LazyLoader>
-                      <AdminCreation />
-                    </LazyLoader>
-                  </SuperAdminRoute>
-                } 
-              />
-              <Route 
-                path="/role-management" 
-                element={
-                  <SuperAdminRoute>
-                    <LazyLoader>
-                      <RoleManagement />
-                    </LazyLoader>
-                  </SuperAdminRoute>
-                } 
-              />
-
-              {/* 404 Route */}
-              <Route 
-                path="*" 
-                element={
-                  <LazyLoader>
-                    <NotFound />
-                  </LazyLoader>
-                } 
-              />
-            </Routes>
-            
-            <Toaster position="top-right" />
-            <PerformanceMonitor />
-            <RoleDebugger />
-          </div>
-        </Router>
+        <RealtimeProvider>
+          <Router>
+            <AppContent />
+            <Toaster />
+          </Router>
+        </RealtimeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
