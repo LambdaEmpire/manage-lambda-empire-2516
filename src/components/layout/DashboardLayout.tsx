@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { AppSidebar } from './AppSidebar';
 import Header from './Header';
 import { useToast } from '@/hooks/use-toast';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 
 interface User {
   id: string;
@@ -120,14 +121,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen w-full">
-      <AppSidebar user={user} profile={profile} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header user={user} profile={profile} onLogout={handleLogout} />
-        <main className="flex-1 overflow-auto p-6">
-          {children}
-        </main>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AppSidebar user={user} profile={profile} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header user={user} profile={profile} onLogout={handleLogout} />
+          <main className="flex-1 overflow-auto p-6">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
