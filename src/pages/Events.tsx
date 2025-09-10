@@ -7,6 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Calendar, MapPin, Users, Ticket, Plus, Clock, DollarSign } from 'lucide-react';
+import { useRealtimeData } from '@/hooks/useRealtimeData';
+import { useOptimizedAuth } from '@/hooks/useOptimizedAuth';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Events() {
   const [isCreateEventDialogOpen, setIsCreateEventDialogOpen] = useState(false);
@@ -20,27 +24,66 @@ export default function Events() {
     capacity: '',
     category: 'meeting'
   });
+  const { toast } = useToast();
+  const { user } = useOptimizedAuth();
 
-  const createEvent = () => {
+  // Fetch real events data from Supabase
+  const { data: events, loading: eventsLoading, error: eventsError } = useRealtimeData({
+    table: 'events',
+    select: '*',
+    orderBy: { column: 'event_date', ascending: true }
+  });
+
+  const createEvent = async () => {
     if (!newEvent.title || !newEvent.date || !newEvent.location) {
-      alert('Please fill in all required fields.');
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
       return;
     }
     
-    console.log('Creating event:', newEvent);
-    // In a real app, this would send data to backend
-    
-    setIsCreateEventDialogOpen(false);
-    setNewEvent({
-      title: '',
-      description: '',
-      date: '',
-      time: '',
-      location: '',
-      price: '',
-      capacity: '',
-      category: 'meeting'
-    });
+    try {
+      const { error } = await supabase
+        .from('events')
+        .insert([{
+          title: newEvent.title,
+          description: newEvent.description,
+          event_date: newEvent.date,
+          event_time: newEvent.time,
+          location: newEvent.location,
+          price: newEvent.price ? parseFloat(newEvent.price) : null,
+          capacity: newEvent.capacity ? parseInt(newEvent.capacity) : null,
+          category: newEvent.category,
+          created_by: user?.id
+        }]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Event Created",
+        description: `${newEvent.title} has been created successfully.`,
+      });
+      
+      setIsCreateEventDialogOpen(false);
+      setNewEvent({
+        title: '',
+        description: '',
+        date: '',
+        time: '',
+        location: '',
+        price: '',
+        capacity: '',
+        category: 'meeting'
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to create event: ${error.message}`,
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -71,179 +114,163 @@ export default function Events() {
           <CardDescription>Register for upcoming Lambda Empire events</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-lg">Annual Gala 2025</h3>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                    <Calendar className="h-4 w-4" />
-                    January 15, 2025 • 7:00 PM
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <MapPin className="h-4 w-4" />
-                    Grand Ballroom, Marriott Downtown
-                  </div>
-                </div>
-                <Badge className="bg-lambda-gold">Featured</Badge>
-              </div>
-              <p className="text-sm text-gray-600">
-                Join us for our premier annual celebration featuring keynote speakers, awards ceremony, and networking.
-              </p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm">
-                  <Ticket className="h-4 w-4" />
-                  $125 per person
-                </div>
-                <Button className="bg-lambda-purple hover:bg-lambda-purple/90">
-                  Register Now
-                </Button>
+          {eventsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                <p className="text-gray-500">Loading events...</p>
               </div>
             </div>
-
-            <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-lg">Regional Leadership Summit</h3>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                    <Calendar className="h-4 w-4" />
-                    January 22-24, 2025
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <MapPin className="h-4 w-4" />
-                    Atlanta Convention Center
-                  </div>
-                </div>
-                <Badge variant="outline">Multi-day</Badge>
-              </div>
-              <p className="text-sm text-gray-600">
-                Three-day intensive leadership development program for regional coordinators and chapter leaders.
-              </p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm">
-                  <Ticket className="h-4 w-4" />
-                  $350 (includes meals)
-                </div>
-                <Button variant="outline">
-                  Learn More
-                </Button>
-              </div>
+          ) : eventsError ? (
+            <div className="text-center py-12">
+              <p className="text-red-500 mb-2">Error loading events</p>
+              <p className="text-gray-500 text-sm">{eventsError}</p>
             </div>
-          </div>
+          ) : !events || events.length === 0 ? (
+            <div className="text-center py-12">
+              <Calendar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 mb-2">No upcoming events scheduled.</p>
+              <p className="text-gray-400 text-sm">Check back later for new events or create one!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {events.map((event) => (
+                <div key={event.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-semibold text-lg">{event.title}</h3>
+                      <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                        <Calendar className="h-4 w-4" />
+                        {new Date(event.event_date).toLocaleDateString()}
+                        {event.event_time && ` • ${event.event_time}`}
+                      </div>
+                      {event.location && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <MapPin className="h-4 w-4" />
+                          {event.location}
+                        </div>
+                      )}
+                    </div>
+                    <Badge variant={event.category === 'gala' ? 'default' : 'outline'}>
+                      {event.category}
+                    </Badge>
+                  </div>
+                  {event.description && (
+                    <p className="text-sm text-gray-600">
+                      {event.description}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between">
+                    {event.price ? (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Ticket className="h-4 w-4" />
+                        ${event.price} per person
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <Ticket className="h-4 w-4" />
+                        Free Event
+                      </div>
+                    )}
+                    <Button className="bg-purple-600 hover:bg-purple-700">
+                      Register
+                    </Button>
+                  </div>
+                  {event.capacity && (
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <Users className="h-3 w-3" />
+                      Capacity: {event.capacity} attendees
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Event Categories */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Chapter Meetings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="font-medium">Monthly Chapter Meeting</p>
-                <p className="text-sm text-gray-600">Jan 8, 2025 • 6:30 PM</p>
-              </div>
-              <Button size="sm">Join</Button>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="font-medium">Executive Board Meeting</p>
-                <p className="text-sm text-gray-600">Jan 12, 2025 • 7:00 PM</p>
-              </div>
-              <Badge variant="secondary">Board Only</Badge>
-            </div>
-          </CardContent>
-        </Card>
+      {events && events.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Meetings */}
+          {events.filter(e => e.category === 'meeting').length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Meetings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {events.filter(e => e.category === 'meeting').slice(0, 3).map((event) => (
+                  <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium">{event.title}</p>
+                      <p className="text-sm text-gray-600">
+                        {new Date(event.event_date).toLocaleDateString()}
+                        {event.event_time && ` • ${event.event_time}`}
+                      </p>
+                    </div>
+                    <Button size="sm">Join</Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Conferences
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="font-medium">National Convention</p>
-                <p className="text-sm text-gray-600">July 15-18, 2025</p>
-              </div>
-              <Badge>Save Date</Badge>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="font-medium">Youth Summit</p>
-                <p className="text-sm text-gray-600">March 20-22, 2025</p>
-              </div>
-              <Button size="sm" variant="outline">Details</Button>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Conferences */}
+          {events.filter(e => e.category === 'conference').length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Conferences
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {events.filter(e => e.category === 'conference').slice(0, 3).map((event) => (
+                  <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium">{event.title}</p>
+                      <p className="text-sm text-gray-600">
+                        {new Date(event.event_date).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline">Details</Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Ticket className="h-5 w-5" />
-              Special Events
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="font-medium">Scholarship Fundraiser</p>
-                <p className="text-sm text-gray-600">Feb 14, 2025</p>
-              </div>
-              <Button size="sm" className="bg-lambda-gold hover:bg-lambda-gold/90">
-                Support
-              </Button>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="font-medium">Community Service Day</p>
-                <p className="text-sm text-gray-600">Feb 28, 2025</p>
-              </div>
-              <Button size="sm" variant="outline">Volunteer</Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* My Registered Events */}
-      <Card>
-        <CardHeader>
-          <CardTitle>My Registered Events</CardTitle>
-          <CardDescription>Events you're currently registered for</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <div>
-                  <p className="font-medium">Annual Gala 2025</p>
-                  <p className="text-sm text-gray-600">January 15, 2025 • Confirmed</p>
-                </div>
-              </div>
-              <Badge className="bg-green-100 text-green-800">Registered</Badge>
-            </div>
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <div>
-                  <p className="font-medium">Monthly Chapter Meeting</p>
-                  <p className="text-sm text-gray-600">January 8, 2025 • Recurring</p>
-                </div>
-              </div>
-              <Badge variant="outline">Recurring</Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          {/* Special Events */}
+          {events.filter(e => ['gala', 'fundraiser', 'social'].includes(e.category)).length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Ticket className="h-5 w-5" />
+                  Special Events
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {events.filter(e => ['gala', 'fundraiser', 'social'].includes(e.category)).slice(0, 3).map((event) => (
+                  <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium">{event.title}</p>
+                      <p className="text-sm text-gray-600">
+                        {new Date(event.event_date).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
+                      {event.category === 'fundraiser' ? 'Support' : 'Register'}
+                    </Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Create Event Dialog */}
       <Dialog open={isCreateEventDialogOpen} onOpenChange={setIsCreateEventDialogOpen}>

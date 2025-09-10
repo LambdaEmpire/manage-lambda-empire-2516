@@ -44,136 +44,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
+import { useRealtimeData } from '@/hooks/useRealtimeData';
+import { useOptimizedAuth } from '@/hooks/useOptimizedAuth';
 
-// Mock member data with privacy settings
-const members = [
-  {
-    id: 'LEM001234',
-    name: 'John Doe',
-    email: 'john.doe@email.com',
-    phone: '(555) 123-4567',
-    level: 'Chapter',
-    title: 'chapter_president',
-    chapter: 'Alpha Chapter',
-    region: 'Northeast',
-    joinDate: '2020-03-15',
-    status: 'Active',
-    orgAffiliation: 'Lambda Phi Omega Fraternity, Inc.',
-    city: 'New York',
-    state: 'NY',
-    bio: 'Passionate about community service and leadership development. Love hiking and photography.',
-    interests: ['Leadership', 'Photography', 'Hiking', 'Community Service'],
-    serviceHours: 59,
-    accomplishments: ['Leadership Excellence Award', 'Community Service Champion'],
-    privacy: {
-      email: 'members', // public, members, private
-      phone: 'private',
-      location: 'members',
-      bio: 'public',
-      interests: 'public',
-      serviceHours: 'members',
-      accomplishments: 'public',
-      joinDate: 'members'
-    },
-    labels: ['Leadership Team', 'Volunteer Coordinator'],
-    invisible: false // New field for invisibility
-  },
-  {
-    id: 'LEM001235',
-    name: 'Sarah Johnson',
-    email: 'sarah.j@email.com',
-    phone: '(555) 234-5678',
-    level: 'Regional',
-    title: 'regional_director',
-    chapter: 'Beta Chapter',
-    region: 'Southeast',
-    joinDate: '2019-08-22',
-    status: 'Active',
-    orgAffiliation: 'Lambda Xi Eta Sorority, Inc.',
-    city: 'Atlanta',
-    state: 'GA',
-    bio: 'Regional coordinator with a passion for mentoring new members.',
-    interests: ['Mentoring', 'Event Planning', 'Public Speaking'],
-    serviceHours: 76,
-    accomplishments: ['Regional Excellence Award', 'Mentor of the Year'],
-    privacy: {
-      email: 'members',
-      phone: 'members',
-      location: 'public',
-      bio: 'public',
-      interests: 'public',
-      serviceHours: 'public',
-      accomplishments: 'public',
-      joinDate: 'public'
-    },
-    labels: ['Regional Coordinator', 'Mentor'],
-    invisible: false
-  },
-  {
-    id: 'LEM001236',
-    name: 'Michael Brown',
-    email: 'mbrown@email.com',
-    phone: '(555) 345-6789',
-    level: 'National',
-    title: 'national_treasurer',
-    chapter: 'Gamma Chapter',
-    region: 'Midwest',
-    joinDate: '2018-01-10',
-    status: 'Active',
-    orgAffiliation: 'Lambda Phi Omega Fraternity, Inc.',
-    city: 'Chicago',
-    state: 'IL',
-    bio: 'Financial expert dedicated to the fiscal health of Lambda Empire.',
-    interests: ['Finance', 'Strategic Planning', 'Technology'],
-    serviceHours: 92,
-    accomplishments: ['Financial Excellence Award', 'Innovation Leader'],
-    privacy: {
-      email: 'private',
-      phone: 'private',
-      location: 'members',
-      bio: 'members',
-      interests: 'members',
-      serviceHours: 'members',
-      accomplishments: 'public',
-      joinDate: 'members'
-    },
-    labels: ['Executive Board', 'Financial Officer'],
-    invisible: false
-  },
-  {
-    id: 'LEM001237',
-    name: 'Emily White',
-    email: 'emily.w@email.com',
-    phone: '(555) 456-7890',
-    level: 'National',
-    title: 'national_vp',
-    chapter: 'Delta Chapter',
-    region: 'West',
-    joinDate: '2021-05-01',
-    status: 'Active',
-    orgAffiliation: 'Lambda Xi Eta Sorority, Inc.',
-    city: 'Los Angeles',
-    state: 'CA',
-    bio: 'National leader focused on expanding our reach and impact.',
-    interests: ['Leadership', 'Networking', 'Travel', 'Social Impact'],
-    serviceHours: 84,
-    accomplishments: ['National Leadership Award', 'Expansion Champion'],
-    privacy: {
-      email: 'members',
-      phone: 'private',
-      location: 'public',
-      bio: 'public',
-      interests: 'public',
-      serviceHours: 'public',
-      accomplishments: 'public',
-      joinDate: 'public'
-    },
-    labels: ['National Leadership', 'Sorority Liaison'],
-    invisible: false
-  }
-];
-
-const memberTitlesMap = { // Renamed to avoid conflict with memberTitles array
+const memberTitlesMap = {
   'national_president': 'National President',
   'national_vp': 'National Vice President',
   'national_secretary': 'National Secretary',
@@ -193,42 +68,68 @@ export default function MemberDirectory() {
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [selectedChapter, setSelectedChapter] = useState('all');
   const [selectedOrgAffiliation, setSelectedOrgAffiliation] = useState('all');
-  const [viewMode, setViewMode] = useState('grid'); // grid or list
-  const [currentUser, setCurrentUser] = useState(members[0]); // Simulate logged-in user
+  const [viewMode, setViewMode] = useState('grid');
   const [isPrivacyDialogOpen, setIsPrivacyDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const { toast } = useToast();
+  
+  // Get current authenticated user
+  const { user } = useOptimizedAuth();
+  
+  // Fetch real member data from Supabase
+  const { data: members, loading: membersLoading, error: membersError } = useRealtimeData({
+    table: 'profiles',
+    select: '*',
+    orderBy: { column: 'first_name', ascending: true }
+  });
+  
+  // Get current user profile from the members data
+  const currentUserProfile = members?.find(member => member.id === user?.id);
+  
+  // Check if current user has admin privileges
+  const isCurrentUserAdmin = currentUserProfile?.can_approve_members || currentUserProfile?.is_super_admin;
+  const isCurrentUserNationalBoard = currentUserProfile?.level === 'National' || currentUserProfile?.title?.includes('national');
 
-  // Simulate admin/national board roles for the current user
-  const isCurrentUserAdmin = currentUser.id === 'LEM001236'; // Michael Brown is admin
-  const isCurrentUserNationalBoard = currentUser.level === 'National';
+  // Get unique values for filters from real data
+  const regions = members ? [...new Set(members.map(m => m.region).filter(Boolean))] : [];
+  const chapters = members ? [...new Set(members.map(m => m.chapter).filter(Boolean))] : [];
 
-  // Get unique values for filters
-  const regions = [...new Set(members.map(m => m.region))];
-  const chapters = [...new Set(members.map(m => m.chapter))];
-
-  const filteredMembers = members.filter(member => {
+  const filteredMembers = (members || []).filter(member => {
     // If member is invisible, only show to admins/national board
     if (member.invisible && !(isCurrentUserAdmin || isCurrentUserNationalBoard)) {
       return false;
     }
 
-    const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (canViewField(member, 'email') && member.email.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesLevel = selectedLevel === 'all' || member.level.toLowerCase() === selectedLevel;
+    const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim();
+    const matchesSearch = fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (member.member_id && member.member_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (canViewField(member, 'email') && member.email && member.email.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesLevel = selectedLevel === 'all' || (member.level && member.level.toLowerCase() === selectedLevel);
     const matchesRegion = selectedRegion === 'all' || member.region === selectedRegion;
     const matchesChapter = selectedChapter === 'all' || member.chapter === selectedChapter;
-    const matchesOrgAffiliation = selectedOrgAffiliation === 'all' || member.orgAffiliation === selectedOrgAffiliation;
+    const matchesOrgAffiliation = selectedOrgAffiliation === 'all' || member.org_affiliation === selectedOrgAffiliation;
     
     return matchesSearch && matchesLevel && matchesRegion && matchesChapter && matchesOrgAffiliation;
   });
 
   // Check if current user can view a specific field based on privacy settings
   const canViewField = (member, field) => {
-    if (member.id === currentUser.id) return true; // Can always see own info
+    if (member.id === user?.id) return true; // Can always see own info
     
-    const privacy = member.privacy[field];
+    // Default privacy settings if not specified
+    const defaultPrivacy = {
+      email: 'members',
+      phone: 'private', 
+      location: 'members',
+      bio: 'public',
+      interests: 'public',
+      serviceHours: 'members',
+      accomplishments: 'public',
+      joinDate: 'members'
+    };
+    
+    const privacy = member.privacy?.[field] || defaultPrivacy[field] || 'members';
     if (privacy === 'public') return true;
     if (privacy === 'private') return false;
     if (privacy === 'members') return !member.invisible; // Members only if not invisible
@@ -236,30 +137,57 @@ export default function MemberDirectory() {
     return false;
   };
 
-  const updatePrivacySetting = (field, value) => {
-    // In a real app, this would update the backend
-    setCurrentUser(prev => ({
-      ...prev,
-      privacy: {
-        ...prev.privacy,
+  const updatePrivacySetting = async (field, value) => {
+    if (!currentUserProfile) return;
+    
+    try {
+      const updatedPrivacy = {
+        ...currentUserProfile.privacy,
         [field]: value
-      }
-    }));
-    toast({
-      title: "Privacy Updated",
-      description: `${field} privacy setting has been updated to ${value}.`,
-    });
+      };
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ privacy: updatedPrivacy })
+        .eq('id', user.id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Privacy Updated",
+        description: `${field} privacy setting has been updated to ${value}.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to update privacy setting: ${error.message}`,
+        variant: "destructive"
+      });
+    }
   };
 
-  const toggleInvisibleMode = (invisible) => {
-    setCurrentUser(prev => ({
-      ...prev,
-      invisible: invisible
-    }));
-    toast({
-      title: "Visibility Updated",
-      description: `You are now ${invisible ? 'invisible' : 'visible'} to other members.`,
-    });
+  const toggleInvisibleMode = async (invisible) => {
+    if (!currentUserProfile) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ invisible })
+        .eq('id', user.id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Visibility Updated",
+        description: `You are now ${invisible ? 'invisible' : 'visible'} to other members.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error", 
+        description: `Failed to update visibility: ${error.message}`,
+        variant: "destructive"
+      });
+    }
   };
 
   const sendMessage = (member) => {
@@ -392,28 +320,46 @@ export default function MemberDirectory() {
           <CardDescription>Lambda Empire member profiles with privacy-controlled information</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredMembers.map((member) => (
+          {membersLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                <p className="text-gray-500">Loading member directory...</p>
+              </div>
+            </div>
+          ) : membersError ? (
+            <div className="text-center py-12">
+              <p className="text-red-500 mb-2">Error loading member directory</p>
+              <p className="text-gray-500 text-sm">{membersError}</p>
+            </div>
+          ) : filteredMembers.length === 0 ? (
+            <div className="text-center py-12">
+              <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">No members found matching your criteria.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredMembers.map((member) => (
               <Card key={member.id} className="hover:shadow-lg transition-shadow">
                 <CardContent className="p-6">
                   {/* Member Header */}
                   <div className="flex items-center gap-4 mb-4">
                     <Avatar className="h-16 w-16">
                       <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-600 text-white text-lg">
-                        {member.name.split(' ').map(n => n[0]).join('')}
+                        {`${member.first_name?.[0] || ''}${member.last_name?.[0] || ''}`}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{member.name}</h3>
+                      <h3 className="font-semibold text-lg">{`${member.first_name || ''} ${member.last_name || ''}`.trim()}</h3>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        {getTitleIcon(member.title)}
-                        <span>{memberTitlesMap[member.title]}</span>
+                        {getTitleIcon(member.title || 'member')}
+                        <span>{memberTitlesMap[member.title || 'member']}</span>
                       </div>
-                      <Badge className={`mt-1 text-xs ${getStatusColor(member.status)}`}>
-                        {member.status}
+                      <Badge className={`mt-1 text-xs ${getStatusColor(member.status || 'Active')}`}>
+                        {member.status || 'Active'}
                       </Badge>
                       <Badge className="mt-1 text-xs" variant="outline">
-                        {member.orgAffiliation}
+                        {member.org_affiliation || 'Lambda Empire'}
                       </Badge>
                     </div>
                   </div>
@@ -422,40 +368,44 @@ export default function MemberDirectory() {
                   <div className="space-y-3">
                     {/* Contact Information */}
                     <div className="space-y-2">
-                      {canViewField(member, 'email') && (
+                      {canViewField(member, 'email') && member.email && (
                         <div className="flex items-center gap-2 text-sm">
                           <Mail className="h-4 w-4 text-gray-500" />
                           <span>{member.email}</span>
                         </div>
                       )}
-                      {canViewField(member, 'phone') && (
+                      {canViewField(member, 'phone') && member.phone && (
                         <div className="flex items-center gap-2 text-sm">
                           <Phone className="h-4 w-4 text-gray-500" />
                           <span>{member.phone}</span>
                         </div>
                       )}
-                      {canViewField(member, 'location') && (
+                      {canViewField(member, 'location') && (member.city || member.state) && (
                         <div className="flex items-center gap-2 text-sm">
                           <MapPin className="h-4 w-4 text-gray-500" />
-                          <span>{member.city}, {member.state}</span>
+                          <span>{[member.city, member.state].filter(Boolean).join(', ')}</span>
                         </div>
                       )}
                     </div>
 
                     {/* Chapter & Region */}
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Building className="h-4 w-4 text-gray-500" />
-                        <span>{member.chapter}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <GraduationCap className="h-4 w-4 text-gray-500" />
-                        <span>{member.region} Region</span>
-                      </div>
-                      {canViewField(member, 'joinDate') && (
+                      {member.chapter && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Building className="h-4 w-4 text-gray-500" />
+                          <span>{member.chapter}</span>
+                        </div>
+                      )}
+                      {member.region && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <GraduationCap className="h-4 w-4 text-gray-500" />
+                          <span>{member.region} Region</span>
+                        </div>
+                      )}
+                      {canViewField(member, 'joinDate') && member.created_at && (
                         <div className="flex items-center gap-2 text-sm">
                           <Calendar className="h-4 w-4 text-gray-500" />
-                          <span>Joined {new Date(member.joinDate).toLocaleDateString()}</span>
+                          <span>Joined {new Date(member.created_at).toLocaleDateString()}</span>
                         </div>
                       )}
                     </div>
@@ -468,7 +418,7 @@ export default function MemberDirectory() {
                     )}
 
                     {/* Interests */}
-                    {canViewField(member, 'interests') && member.interests && (
+                    {canViewField(member, 'interests') && member.interests && Array.isArray(member.interests) && member.interests.length > 0 && (
                       <div className="pt-2">
                         <div className="flex items-center gap-2 mb-2">
                           <Heart className="h-4 w-4 text-gray-500" />
@@ -485,15 +435,15 @@ export default function MemberDirectory() {
                     )}
 
                     {/* Service Hours */}
-                    {canViewField(member, 'serviceHours') && (
+                    {canViewField(member, 'serviceHours') && member.service_hours && (
                       <div className="flex items-center gap-2 text-sm">
                         <Award className="h-4 w-4 text-green-600" />
-                        <span className="font-medium text-green-600">{member.serviceHours} Service Hours</span>
+                        <span className="font-medium text-green-600">{member.service_hours} Service Hours</span>
                       </div>
                     )}
 
                     {/* Accomplishments */}
-                    {canViewField(member, 'accomplishments') && member.accomplishments && (
+                    {canViewField(member, 'accomplishments') && member.accomplishments && Array.isArray(member.accomplishments) && member.accomplishments.length > 0 && (
                       <div className="pt-2">
                         <div className="flex items-center gap-2 mb-2">
                           <Trophy className="h-4 w-4 text-yellow-600" />
@@ -510,15 +460,17 @@ export default function MemberDirectory() {
                     )}
 
                     {/* Labels */}
-                    <div className="pt-2 border-t">
-                      <div className="flex flex-wrap gap-1">
-                        {member.labels.map((label, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {label}
-                          </Badge>
-                        ))}
+                    {member.labels && Array.isArray(member.labels) && member.labels.length > 0 && (
+                      <div className="pt-2 border-t">
+                        <div className="flex flex-wrap gap-1">
+                          {member.labels.map((label, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {label}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Actions */}
                     <div className="pt-3 border-t">
@@ -531,7 +483,7 @@ export default function MemberDirectory() {
                           <MessageSquare className="h-3 w-3 mr-1" />
                           Message
                         </Button>
-                        {member.id === currentUser.id && (
+                        {member.id === user?.id && (
                           <Button 
                             size="sm" 
                             variant="outline"
@@ -548,8 +500,9 @@ export default function MemberDirectory() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
