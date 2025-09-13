@@ -1,4 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRealtimeData } from '@/hooks/useRealtimeData';
+import { useOptimizedAuth } from '@/hooks/useOptimizedAuth';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,31 +37,45 @@ import {
   ExternalLink
 } from 'lucide-react';
 
-// Mock data for members and communication history
-const mockMembers = [
-  { id: 'LEM001', name: 'John Doe', email: 'john.doe@example.com', phone: '123-456-7890', chapter: 'Alpha', status: 'Active', role: 'member' },
-  { id: 'LEM002', name: 'Jane Smith', email: 'jane.smith@example.com', phone: '098-765-4321', chapter: 'Alpha', status: 'Active', role: 'member' },
-  { id: 'LEM003', name: 'Michael Brown', email: 'michael.b@example.com', phone: '111-222-3333', chapter: 'Beta', status: 'Inactive', role: 'member' },
-  { id: 'LEM004', name: 'Sarah Davis', email: 'sarah.d@example.com', phone: '444-555-6666', chapter: 'Alpha', status: 'Active', role: 'admin' },
-];
+interface Member {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  chapter?: string;
+  status: string;
+  role?: string;
+}
 
-const mockCommunicationsLog = [
-  { id: 'COMM001', type: 'Push Alert', subject: 'Emergency Chapter Meeting', recipients: 'All Active Members', status: 'Sent', date: '2024-01-20T10:00:00Z', priority: 'high' },
-  { id: 'COMM002', type: 'Email', subject: 'Quarterly Dues Notice', recipients: 'All Active Members', status: 'Sent', date: '2024-01-15T09:00:00Z', priority: 'medium' },
-  { id: 'COMM003', type: 'SMS', subject: 'Chapter Meeting Update', recipients: 'Michael Brown', status: 'Failed', date: '2024-01-10T15:30:00Z', priority: 'low' },
-  { id: 'COMM004', type: 'GroupMe', subject: 'Weekly Announcement', recipients: 'Alpha Chapter Group', status: 'Sent', date: '2024-01-08T12:00:00Z', priority: 'medium' },
-];
+interface Communication {
+  id: string;
+  type: string;
+  subject: string;
+  recipients: string;
+  status: string;
+  created_at: string;
+  priority?: string;
+  sender_id?: string;
+}
 
-// Mock GroupMe integration settings
-const mockGroupMeSettings = {
-  connected: true,
-  botId: 'bot_12345',
-  groupName: 'Lambda Empire - Alpha Chapter',
-  groupId: 'group_67890',
-  lastSync: '2024-01-20T08:00:00Z'
-};
+interface GroupMeSettings {
+  connected: boolean;
+  botId: string;
+  groupName: string;
+  groupId: string;
+  lastSync: string;
+}
 
 export default function Communications() {
+  const { user } = useOptimizedAuth();
+  const { toast } = useToast();
+  
+  // Real-time data hooks
+  const { data: profiles = [], loading: profilesLoading } = useRealtimeData('profiles');
+  const { data: communications = [], loading: communicationsLoading } = useRealtimeData('communications');
+  
+  // Component state
   const [activeTab, setActiveTab] = useState('announcements');
   const [smsMessage, setSmsMessage] = useState('');
   const [smsRecipients, setSmsRecipients] = useState([]);
@@ -73,12 +91,54 @@ export default function Communications() {
   const [sendSuccess, setSendSuccess] = useState(false);
   const [sendError, setSendError] = useState('');
   const [isGroupMeDialogOpen, setIsGroupMeDialogOpen] = useState(false);
-  const [groupMeSettings, setGroupMeSettings] = useState(mockGroupMeSettings);
+  const [groupMeSettings, setGroupMeSettings] = useState<GroupMeSettings>({
+    connected: false,
+    botId: '',
+    groupName: '',
+    groupId: '',
+    lastSync: ''
+  });
   const [membersOnly, setMembersOnly] = useState(true);
 
-  // Mock user role
-  const userRole = 'admin';
-  const isMember = true;
+  // Process members data
+  const members: Member[] = profiles.map(profile => ({
+    id: profile.id,
+    first_name: profile.first_name || '',
+    last_name: profile.last_name || '',
+    email: profile.email || '',
+    phone: profile.phone || '',
+    chapter: profile.chapter || '',
+    status: profile.status || 'Active',
+    role: profile.can_approve_members ? 'admin' : 'member'
+  }));
+
+  const currentUserProfile = profiles.find(p => p.id === user?.id);
+  const userRole = currentUserProfile?.can_approve_members ? 'admin' : 'member';
+  const isMember = !!currentUserProfile;
+
+  // Helper function to log communications
+  const logCommunication = async (type: string, subject: string, recipients: string[], status: string = 'Sent', priority: string = 'medium') => {
+    try {
+      const recipientNames = recipients.map(id => {
+        if (id.startsWith('all_')) {
+          return id.replace('all_', '').replace('_', ' ').toUpperCase();
+        }
+        const member = members.find(m => m.id === id);
+        return member ? `${member.first_name} ${member.last_name}` : 'Unknown';
+      }).join(', ');
+
+      await supabase.from('communications').insert({
+        type,
+        subject,
+        recipients: recipientNames,
+        status,
+        priority,
+        sender_id: user?.id
+      });
+    } catch (error) {
+      console.error('Failed to log communication:', error);
+    }
+  };
 
   const handleSendPushAlert = async () => {
     setSendError('');
@@ -110,20 +170,12 @@ export default function Communications() {
       setPushRecipients([]);
       setPushPriority('medium');
       
-      // Add to mock log
-      mockCommunicationsLog.unshift({
-        id: `COMM${Date.now()}`,
-        type: 'Push Alert',
-        subject: pushTitle,
-        recipients: pushRecipients.map(id => {
-          if (id.startsWith('all_')) {
-            return id.replace('all_', '').replace('_', ' ').toUpperCase();
-          }
-          return mockMembers.find(m => m.id === id)?.name;
-        }).join(', '),
-        status: 'Sent',
-        date: new Date().toISOString(),
-        priority: pushPriority
+      // Log communication to database
+      await logCommunication('Push Alert', pushTitle, pushRecipients, 'Sent', pushPriority);
+      
+      toast({
+        title: "Push Alert Sent",
+        description: `Push alert sent to ${pushRecipients.length} recipient(s)`,
       });
     } catch (error) {
       setSendError('Failed to send push alert. Please try again.');
@@ -150,19 +202,12 @@ export default function Communications() {
       setSmsMessage('');
       setSmsRecipients([]);
       
-      mockCommunicationsLog.unshift({
-        id: `COMM${Date.now()}`,
-        type: 'SMS',
-        subject: smsMessage.substring(0, 30) + '...',
-        recipients: smsRecipients.map(id => {
-          if (id.startsWith('all_')) {
-            return id.replace('all_', '').replace('_', ' ').toUpperCase();
-          }
-          return mockMembers.find(m => m.id === id)?.name;
-        }).join(', '),
-        status: 'Sent',
-        date: new Date().toISOString(),
-        priority: 'medium'
+      // Log communication to database
+      await logCommunication('SMS', smsMessage.substring(0, 50) + '...', smsRecipients, 'Sent');
+      
+      toast({
+        title: "SMS Sent",
+        description: `SMS sent to ${smsRecipients.length} recipient(s)`,
       });
     } catch (error) {
       setSendError('Failed to send SMS. Please try again.');
@@ -190,19 +235,12 @@ export default function Communications() {
       setEmailBody('');
       setEmailRecipients([]);
       
-      mockCommunicationsLog.unshift({
-        id: `COMM${Date.now()}`,
-        type: 'Email',
-        subject: emailSubject,
-        recipients: emailRecipients.map(id => {
-          if (id.startsWith('all_')) {
-            return id.replace('all_', '').replace('_', ' ').toUpperCase();
-          }
-          return mockMembers.find(m => m.id === id)?.name;
-        }).join(', '),
-        status: 'Sent',
-        date: new Date().toISOString(),
-        priority: 'medium'
+      // Log communication to database
+      await logCommunication('Email', emailSubject, emailRecipients, 'Sent');
+      
+      toast({
+        title: "Email Sent",
+        description: `Email sent to ${emailRecipients.length} recipient(s)`,
       });
     } catch (error) {
       setSendError('Failed to send email. Please try again.');
@@ -234,14 +272,12 @@ export default function Communications() {
       setSendSuccess(true);
       setGroupMeMessage('');
       
-      mockCommunicationsLog.unshift({
-        id: `COMM${Date.now()}`,
-        type: 'GroupMe',
-        subject: groupMeMessage.substring(0, 30) + '...',
-        recipients: groupMeSettings.groupName,
-        status: 'Sent',
-        date: new Date().toISOString(),
-        priority: 'medium'
+      // Log communication to database
+      await logCommunication('GroupMe', groupMeMessage.substring(0, 50) + '...', [groupMeSettings.groupName], 'Sent');
+      
+      toast({
+        title: "GroupMe Message Sent",
+        description: `Message sent to ${groupMeSettings.groupName}`,
       });
     } catch (error) {
       setSendError('Failed to send GroupMe message. Please try again.');
