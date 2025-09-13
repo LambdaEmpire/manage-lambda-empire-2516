@@ -21,64 +21,35 @@ import {
   Trophy,
   Target,
   X,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { useOptimizedAuth } from '@/hooks/useOptimizedAuth';
+import { useRealtimeData } from '@/hooks/useRealtimeData';
+import { createKnowledgeEntry, createQuiz, submitQuizAnswer } from '@/lib/dataHelpers';
 import { useToast } from '@/hooks/use-toast';
 
-// Mock quiz data
-const mockQuizzes = [
-  {
-    id: 'QUIZ001',
-    title: 'Leadership Fundamentals Quiz',
-    description: 'Test your knowledge of core leadership principles',
-    category: 'Leadership',
-    questions: 5,
-    timeLimit: 10,
-    difficulty: 'beginner',
-    isRequired: true,
-    completed: true,
-    score: 85
-  },
-  {
-    id: 'QUIZ002',
-    title: 'Lambda Empire History',
-    description: 'How well do you know our organization\'s history?',
-    category: 'History',
-    questions: 8,
-    timeLimit: 15,
-    difficulty: 'intermediate',
-    isRequired: true,
-    completed: false,
-    score: null
-  },
-  {
-    id: 'QUIZ003',
-    title: 'Ethics in Leadership',
-    description: 'Ethical decision-making scenarios',
-    category: 'Leadership',
-    questions: 6,
-    timeLimit: 12,
-    difficulty: 'advanced',
-    isRequired: false,
-    completed: false,
-    score: null
-  }
-];
-
 export default function LambdaKnowledge() {
-  const [canAddKnowledge, setCanAddKnowledge] = useState(true); // Set to true by default for testing
-  const [loading, setLoading] = useState(false); // Set to false by default
+  const { user, profile } = useOptimizedAuth();
+  
+  // Fetch real-time data
+  const { data: knowledgeEntries, loading: knowledgeLoading } = useRealtimeData('knowledge_entries');
+  const { data: quizzes, loading: quizzesLoading } = useRealtimeData('quizzes');
+  const { data: quizQuestions, loading: questionsLoading } = useRealtimeData('quiz_questions');
+  const { data: quizSubmissions, loading: submissionsLoading } = useRealtimeData('quiz_submissions', user ? [['user_id', 'eq', user.id]] : null);
+  
+  const loading = knowledgeLoading || quizzesLoading || questionsLoading || submissionsLoading;
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isQuizDialogOpen, setIsQuizDialogOpen] = useState(false);
   const [isQuizFormOpen, setIsQuizFormOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentQuiz, setCurrentQuiz] = useState(null);
-  const [quizQuestions, setQuizQuestions] = useState([]);
+  const [currentQuizQuestions, setCurrentQuizQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState({});
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [quizScore, setQuizScore] = useState(0);
+  const [canAddKnowledge, setCanAddKnowledge] = useState(false);
   const { toast } = useToast();
 
   const knowledgeCategories = [
@@ -93,85 +64,12 @@ export default function LambdaKnowledge() {
     'Training Materials'
   ];
 
-  // Mock quiz questions
-  const sampleQuestions = [
-    {
-      id: 1,
-      question: "What is the primary goal of effective leadership?",
-      type: "multiple_choice",
-      options: [
-        "To control others",
-        "To inspire and guide others toward common goals",
-        "To make all decisions alone",
-        "To avoid responsibility"
-      ],
-      correctAnswer: 1,
-      explanation: "Effective leadership is about inspiring and guiding others toward achieving common goals."
-    },
-    {
-      id: 2,
-      question: "Which of the following are key leadership qualities? (Select all that apply)",
-      type: "multiple_select",
-      options: [
-        "Integrity",
-        "Communication skills",
-        "Micromanagement",
-        "Empathy"
-      ],
-      correctAnswers: [0, 1, 3],
-      explanation: "Integrity, communication skills, and empathy are essential leadership qualities."
-    }
-  ];
-
-  // Check user permissions on component mount
+  // Check user permissions
   useEffect(() => {
-    checkUserPermissions();
-  }, []);
-
-  const checkUserPermissions = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        // If no user is logged in, still show buttons for demo purposes
-        console.log('No user logged in, showing buttons for demo');
-        setCanAddKnowledge(true);
-        setLoading(false);
-        return;
-      }
-
-      // Check if user has permission to add knowledge
-      const { data: addKnowledgePermission, error: addKnowledgeError } = await supabase
-        .from('user_permissions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('permission_type', 'add_knowledge')
-        .maybeSingle();
-
-      // Check if user is admin
-      const { data: adminPermission, error: adminError } = await supabase
-        .from('user_permissions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('permission_type', 'admin')
-        .maybeSingle();
-
-      // If there are errors (like table doesn't exist), show buttons anyway for demo
-      if (addKnowledgeError || adminError) {
-        console.log('Permission check errors, showing buttons for demo:', { addKnowledgeError, adminError });
-        setCanAddKnowledge(true);
-      } else {
-        setCanAddKnowledge(!!addKnowledgePermission || !!adminPermission);
-      }
-      
-      setLoading(false);
-    } catch (error) {
-      console.error('Error checking permissions:', error);
-      // On error, show buttons for demo purposes
-      setCanAddKnowledge(true);
-      setLoading(false);
+    if (profile) {
+      setCanAddKnowledge(profile.can_approve_members || profile.is_super_admin);
     }
-  };
+  }, [profile]);
 
   const handleAddKnowledge = () => {
     setIsFormDialogOpen(true);
@@ -182,8 +80,11 @@ export default function LambdaKnowledge() {
   };
 
   const handleTakeQuiz = (quiz) => {
+    // Get questions for this quiz
+    const questionsForQuiz = quizQuestions?.filter(q => q.quiz_id === quiz.id) || [];
+    
     setCurrentQuiz(quiz);
-    setQuizQuestions(sampleQuestions);
+    setCurrentQuizQuestions(questionsForQuiz);
     setCurrentQuestionIndex(0);
     setUserAnswers({});
     setQuizCompleted(false);
@@ -198,28 +99,36 @@ export default function LambdaKnowledge() {
     }));
   };
 
-  const handleNextQuestion = () => {
-    if (currentQuestionIndex < quizQuestions.length - 1) {
+  const handleNextQuestion = async () => {
+    if (currentQuestionIndex < currentQuizQuestions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
       // Calculate score and complete quiz
       let correct = 0;
-      quizQuestions.forEach(question => {
+      currentQuizQuestions.forEach(question => {
         const userAnswer = userAnswers[question.id];
-        if (question.type === 'multiple_choice') {
-          if (userAnswer === question.correctAnswer) correct++;
-        } else if (question.type === 'multiple_select') {
-          if (Array.isArray(userAnswer) && 
-              userAnswer.length === question.correctAnswers.length &&
-              userAnswer.every(ans => question.correctAnswers.includes(ans))) {
-            correct++;
-          }
+        if (userAnswer === question.correct_answer) {
+          correct++;
         }
       });
       
-      const score = Math.round((correct / quizQuestions.length) * 100);
+      const score = Math.round((correct / currentQuizQuestions.length) * 100);
       setQuizScore(score);
       setQuizCompleted(true);
+      
+      // Save quiz submission to database
+      if (user && currentQuiz) {
+        try {
+          await submitQuizAnswer(
+            currentQuiz.id, 
+            Object.values(userAnswers), 
+            score, 
+            currentQuizQuestions.length
+          );
+        } catch (error) {
+          console.error('Error saving quiz submission:', error);
+        }
+      }
       
       toast({
         title: "Quiz Completed!",
@@ -234,24 +143,19 @@ export default function LambdaKnowledge() {
 
     try {
       const formData = new FormData(e.target);
-      const knowledgeData = {
-        title: formData.get('title'),
-        content: formData.get('content'),
-        category: formData.get('category'),
-        tags: formData.get('tags')?.split(',').map(tag => tag.trim()).filter(tag => tag !== '') || [],
-        difficulty_level: formData.get('difficulty_level'),
-        estimated_time: formData.get('estimated_time'),
-        is_required: formData.get('is_required') === 'true'
-      };
+      const title = formData.get('title') as string;
+      const content = formData.get('content') as string;
+      const category = formData.get('category') as string;
 
-      console.log('Knowledge article data:', knowledgeData);
+      await createKnowledgeEntry(title, content, category);
 
       toast({
         title: "Knowledge Article Created",
-        description: `"${knowledgeData.title}" has been successfully added to the knowledge base.`,
+        description: `"${title}" has been successfully added to the knowledge base.`,
       });
 
       setIsFormDialogOpen(false);
+      e.target.reset();
     } catch (error) {
       console.error('Error creating knowledge article:', error);
       toast({
@@ -270,23 +174,22 @@ export default function LambdaKnowledge() {
 
     try {
       const formData = new FormData(e.target);
-      const quizData = {
-        title: formData.get('quiz_title'),
-        description: formData.get('quiz_description'),
-        category: formData.get('quiz_category'),
-        timeLimit: parseInt(formData.get('time_limit')),
-        difficulty: formData.get('quiz_difficulty'),
-        isRequired: formData.get('quiz_required') === 'true'
-      };
-
-      console.log('Quiz data:', quizData);
+      const title = formData.get('quiz_title') as string;
+      const description = formData.get('quiz_description') as string;
+      const category = formData.get('quiz_category') as string;
+      
+      // For now, create quiz without questions - questions can be added separately
+      const questions = []; // TODO: Add question creation interface
+      
+      await createQuiz(title, description, category, questions);
 
       toast({
         title: "Quiz Created",
-        description: `"${quizData.title}" has been successfully created.`,
+        description: `"${title}" has been successfully created.`,
       });
 
       setIsQuizFormOpen(false);
+      e.target.reset();
     } catch (error) {
       console.error('Error creating quiz:', error);
       toast({
@@ -299,7 +202,28 @@ export default function LambdaKnowledge() {
     }
   };
 
-  const currentQuestion = quizQuestions[currentQuestionIndex];
+  const currentQuestion = currentQuizQuestions[currentQuestionIndex];
+  
+  // Calculate user progress
+  const completedQuizzes = quizzes?.filter(quiz => 
+    quizSubmissions?.some(submission => submission.quiz_id === quiz.id)
+  ) || [];
+  
+  const userSubmissions = quizSubmissions || [];
+  const totalQuizzes = quizzes?.length || 0;
+  const completedCount = completedQuizzes.length;
+  const progressPercentage = totalQuizzes > 0 ? Math.round((completedCount / totalQuizzes) * 100) : 0;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Loading Lambda Knowledge...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -343,24 +267,24 @@ export default function LambdaKnowledge() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Overall Progress</span>
-              <span className="text-sm text-gray-600">85% Complete</span>
+              <span className="text-sm text-gray-600">{progressPercentage}% Complete</span>
             </div>
-            <Progress value={85} className="h-2" />
+            <Progress value={progressPercentage} className="h-2" />
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
               <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">12</div>
+                <div className="text-2xl font-bold text-green-600">{completedCount}</div>
                 <p className="text-sm text-gray-600">Completed</p>
               </div>
               <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">2</div>
-                <p className="text-sm text-gray-600">In Progress</p>
+                <div className="text-2xl font-bold text-blue-600">{knowledgeEntries?.length || 0}</div>
+                <p className="text-sm text-gray-600">Knowledge Articles</p>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold text-gray-600">1</div>
-                <p className="text-sm text-gray-600">Not Started</p>
+                <div className="text-2xl font-bold text-gray-600">{totalQuizzes - completedCount}</div>
+                <p className="text-sm text-gray-600">Available</p>
               </div>
               <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">3</div>
+                <div className="text-2xl font-bold text-purple-600">{userSubmissions.length}</div>
                 <p className="text-sm text-gray-600">Quizzes Taken</p>
               </div>
             </div>
@@ -375,141 +299,121 @@ export default function LambdaKnowledge() {
           <CardDescription>Test your understanding with interactive quizzes</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {mockQuizzes.map(quiz => (
-              <div key={quiz.id} className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    {quiz.completed ? (
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <Brain className="h-5 w-5 text-blue-600" />
-                    )}
-                    <div>
-                      <h3 className="font-semibold">{quiz.title}</h3>
-                      <p className="text-sm text-gray-600">{quiz.description}</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    {quiz.isRequired && (
-                      <Badge className="bg-red-100 text-red-800 text-xs">Required</Badge>
-                    )}
-                    {quiz.completed && quiz.score && (
-                      <Badge className="bg-green-100 text-green-800 text-xs">
-                        {quiz.score}%
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <Target className="h-4 w-4" />
-                    {quiz.questions} questions
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    {quiz.timeLimit} min
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {quiz.difficulty}
-                  </Badge>
-                </div>
-                <Button 
-                  size="sm" 
-                  className="w-full" 
-                  onClick={() => handleTakeQuiz(quiz)}
-                  variant={quiz.completed ? "outline" : "default"}
-                >
-                  {quiz.completed ? "Retake Quiz" : "Take Quiz"}
+          {!quizzes || quizzes.length === 0 ? (
+            <div className="text-center py-8">
+              <Brain className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-600 mb-2">No Quizzes Available</h3>
+              <p className="text-gray-500 mb-4">Check back later for new quizzes to test your knowledge.</p>
+              {canAddKnowledge && (
+                <Button onClick={handleAddQuiz}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Quiz
                 </Button>
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {quizzes.map(quiz => {
+                const submission = userSubmissions.find(sub => sub.quiz_id === quiz.id);
+                const isCompleted = !!submission;
+                const questionsCount = quizQuestions?.filter(q => q.quiz_id === quiz.id).length || 0;
+
+                return (
+                  <div key={quiz.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        {isCompleted ? (
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                        ) : (
+                          <Brain className="h-5 w-5 text-blue-600" />
+                        )}
+                        <div>
+                          <h3 className="font-semibold">{quiz.title}</h3>
+                          <p className="text-sm text-gray-600">{quiz.description}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        {isCompleted && submission && (
+                          <Badge className="bg-green-100 text-green-800 text-xs">
+                            {Math.round((submission.score / submission.total_questions) * 100)}%
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <Target className="h-4 w-4" />
+                        {questionsCount} questions
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {quiz.category}
+                      </Badge>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      className="w-full" 
+                      onClick={() => handleTakeQuiz(quiz)}
+                      variant={isCompleted ? "outline" : "default"}
+                      disabled={questionsCount === 0}
+                    >
+                      {questionsCount === 0 ? "No Questions Available" : 
+                       isCompleted ? "Retake Quiz" : "Take Quiz"}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Required Learning Modules */}
+      {/* Knowledge Articles */}
       <Card>
         <CardHeader>
-          <CardTitle>Required Learning Modules</CardTitle>
-          <CardDescription>Complete these modules to maintain active membership status</CardDescription>
+          <CardTitle>Knowledge Articles</CardTitle>
+          <CardDescription>Browse our collection of educational articles and resources</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <div>
-                    <h3 className="font-semibold">Leadership Fundamentals</h3>
-                    <p className="text-sm text-gray-600">Core leadership principles and practices</p>
-                  </div>
-                </div>
-                <Badge className="bg-green-100 text-green-800">Completed</Badge>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Video className="h-4 w-4" />
-                4 videos • 2 hours
-              </div>
-              <Progress value={100} className="h-1" />
+        <CardContent>
+          {!knowledgeEntries || knowledgeEntries.length === 0 ? (
+            <div className="text-center py-8">
+              <BookOpen className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-600 mb-2">No Knowledge Articles Yet</h3>
+              <p className="text-gray-500 mb-4">Be the first to add valuable knowledge to our database.</p>
+              {canAddKnowledge && (
+                <Button onClick={handleAddKnowledge}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add First Article
+                </Button>
+              )}
             </div>
-
-            <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <Clock className="h-5 w-5 text-blue-600" />
-                  <div>
-                    <h3 className="font-semibold">Ethics in Leadership</h3>
-                    <p className="text-sm text-gray-600">Ethical decision-making framework</p>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              {knowledgeEntries.map(article => (
+                <div key={article.id} className="border rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <h3 className="font-semibold line-clamp-1">{article.title}</h3>
+                        <p className="text-sm text-gray-600 line-clamp-2">{article.content.substring(0, 100)}...</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <Badge className="bg-blue-100 text-blue-800">In Progress</Badge>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <BookOpen className="h-4 w-4" />
-                3 readings • 5 videos • 3 hours
-              </div>
-              <Progress value={60} className="h-1" />
-              <Button size="sm" className="w-full">Continue Learning</Button>
-            </div>
-
-            <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <div>
-                    <h3 className="font-semibold">Lambda Empire History</h3>
-                    <p className="text-sm text-gray-600">Our organization's founding and evolution</p>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {article.category}
+                    </Badge>
+                    <span className="text-xs text-gray-500">
+                      {new Date(article.created_at).toLocaleDateString()}
+                    </span>
                   </div>
+                  <Button size="sm" variant="outline" className="w-full">
+                    Read Article
+                  </Button>
                 </div>
-                <Badge className="bg-green-100 text-green-800">Completed</Badge>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <BookOpen className="h-4 w-4" />
-                6 readings • 1.5 hours
-              </div>
-              <Progress value={100} className="h-1" />
+              ))}
             </div>
-
-            <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-5 w-5 border-2 border-gray-300 rounded-full"></div>
-                  <div>
-                    <h3 className="font-semibold">Community Engagement</h3>
-                    <p className="text-sm text-gray-600">Effective community service strategies</p>
-                  </div>
-                </div>
-                <Badge variant="outline">Not Started</Badge>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Video className="h-4 w-4" />
-                2 videos • 4 readings • 2.5 hours
-              </div>
-              <Progress value={0} className="h-1" />
-              <Button size="sm" variant="outline" className="w-full">Start Module</Button>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -817,56 +721,30 @@ export default function LambdaKnowledge() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">{currentQuestion.question}</h3>
                 
-                {currentQuestion.type === 'multiple_choice' && (
-                  <RadioGroup 
-                    value={userAnswers[currentQuestion.id]?.toString() || ""} 
-                    onValueChange={(value) => handleAnswerChange(currentQuestion.id, parseInt(value))}
-                  >
-                    {currentQuestion.options.map((option, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                        <Label htmlFor={`option-${index}`} className="cursor-pointer">
-                          {option}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                )}
-
-                {currentQuestion.type === 'multiple_select' && (
-                  <div className="space-y-2">
-                    {currentQuestion.options.map((option, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`checkbox-${index}`}
-                          checked={userAnswers[currentQuestion.id]?.includes(index) || false}
-                          onCheckedChange={(checked) => {
-                            const currentAnswers = userAnswers[currentQuestion.id] || [];
-                            if (checked) {
-                              handleAnswerChange(currentQuestion.id, [...currentAnswers, index]);
-                            } else {
-                              handleAnswerChange(currentQuestion.id, currentAnswers.filter(ans => ans !== index));
-                            }
-                          }}
-                        />
-                        <Label htmlFor={`checkbox-${index}`} className="cursor-pointer">
-                          {option}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <RadioGroup 
+                  value={userAnswers[currentQuestion.id]?.toString() || ""} 
+                  onValueChange={(value) => handleAnswerChange(currentQuestion.id, parseInt(value))}
+                >
+                  {currentQuestion.options.map((option, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                      <Label htmlFor={`option-${index}`} className="cursor-pointer">
+                        {option}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
               </div>
 
               <div className="flex justify-between items-center">
                 <div className="text-sm text-gray-600">
-                  Progress: {currentQuestionIndex + 1} / {quizQuestions.length}
+                  Progress: {currentQuestionIndex + 1} / {currentQuizQuestions.length}
                 </div>
                 <Button 
                   onClick={handleNextQuestion}
-                  disabled={!userAnswers[currentQuestion.id]}
+                  disabled={userAnswers[currentQuestion.id] === undefined}
                 >
-                  {currentQuestionIndex === quizQuestions.length - 1 ? 'Finish Quiz' : 'Next Question'}
+                  {currentQuestionIndex === currentQuizQuestions.length - 1 ? 'Finish Quiz' : 'Next Question'}
                 </Button>
               </div>
             </div>
