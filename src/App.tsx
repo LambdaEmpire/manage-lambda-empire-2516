@@ -66,8 +66,9 @@ function AppContent() {
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/admin-login" element={<AdminLogin />} />
       <Route path="/super-admin-setup" element={<SuperAdminSetup />} />
+      {/* Redirect old admin login to unified login */}
+      <Route path="/admin-login" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

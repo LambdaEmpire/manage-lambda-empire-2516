@@ -61,11 +61,24 @@ export default function Login() {
       }
 
       if (data.user) {
+        // Get user profile to determine role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
         toast({
           title: "Welcome back!",
           description: "You have successfully logged in.",
         });
-        navigate('/');
+
+        // Role-based redirect
+        if (profile?.is_super_admin || profile?.can_approve_members) {
+          navigate('/admin-dashboard');
+        } else {
+          navigate('/member-dashboard');
+        }
       }
     } catch (error: any) {
       console.error('Login error:', error);
@@ -143,9 +156,9 @@ export default function Login() {
         {/* Login/Signup Card */}
         <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl text-center">Welcome</CardTitle>
+            <CardTitle className="text-2xl text-center">Member Login</CardTitle>
             <CardDescription className="text-center">
-              Sign in to your account or create a new one
+              Access your Lambda Empire account - All roles welcome
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -309,26 +322,17 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        {/* Admin Access */}
+        {/* Welcome Message */}
         <Card className="shadow-lg border-0 bg-gradient-to-r from-purple-500 to-blue-600 text-white">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Shield className="h-6 w-6" />
-                <div>
-                  <h3 className="font-semibold">Administrator?</h3>
-                  <p className="text-sm text-white/80">Access the admin portal</p>
-                </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center space-x-2 mb-2">
+                <Crown className="h-6 w-6" />
+                <h3 className="font-semibold">Lambda Empire Portal</h3>
               </div>
-              <Link to="/admin-login">
-                <Button 
-                  variant="secondary"
-                  size="sm"
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                >
-                  Admin Login
-                </Button>
-              </Link>
+              <p className="text-sm text-white/90">
+                One login for all members - Regular, Admins, and Directors
+              </p>
             </div>
           </CardContent>
         </Card>
